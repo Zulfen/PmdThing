@@ -13,7 +13,7 @@ namespace PmdThing.Components.Networking
         public bool Running
         {
             get => Interlocked.Read(ref _running) == 1;
-            protected set => Interlocked.Exchange(ref _running, Convert.ToInt64(value));
+            set => Interlocked.Exchange(ref _running, Convert.ToInt64(value));
         }
 
         public override void Cleanup()

@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Text.Json;
 
 namespace PmdThing.Core.Util
 {
@@ -53,6 +54,25 @@ namespace PmdThing.Core.Util
             return false;
         }
 
+        public static object[]? ParseJsonElements(JsonElement[]? elements)
+        {
+            if (elements == null) return null;
+            var parsedElements = new object[elements.Length];
+
+            for (var i = 0; i < elements.Length; i++)
+            {
+                var element = elements[i];
+                parsedElements[i] = element.ValueKind switch
+                {
+                    JsonValueKind.String => element.GetString()!,
+                    JsonValueKind.Number => element.GetDouble(),
+                    JsonValueKind.True or JsonValueKind.False => element.GetBoolean(),
+                    JsonValueKind.Null => null!,
+                    _ => throw new NotSupportedException($"Unsupported JSON value kind: {element.ValueKind}")
+                };
+            }
+            return parsedElements;
+        }
 
     }
 }

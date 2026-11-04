@@ -57,7 +57,9 @@ namespace PmdThing.Components.Networking
         private void UpdateListenableValue(PmdContainerId parentId, string tag, string fieldName, object data)
         {
             var id = GetIdForTag(tag, parentId);
-            var component = GetOtherComponent(id);
+            if (id == null) return;
+
+            var component = GetOtherComponent((int)id);
 
             var setMethod = component.GetType()
                 .GetField(fieldName)?
@@ -71,8 +73,9 @@ namespace PmdThing.Components.Networking
         private void UpdateListenableComponent(PmdContainerId parentId, string tag, object data)
         {
             var id = GetIdForTag(tag, parentId);
+            if (id == null) return;
 
-            var component = GetOtherComponent(id);
+            var component = GetOtherComponent((int)id);
             var value = component.GetType().GetProperty("ComponentValue");
 
             value?.SetValue(component, data);
@@ -85,7 +88,7 @@ namespace PmdThing.Components.Networking
             packetDto.Data = [current, tag];
             _sendQueue.Add(packetDto, ShutdownTokenSrc.Token);
 
-            Framework.Logger.LogDebug("Listenable value [{type}] updated ({attribute}", packetDto.Id,
+            Framework.Logger.LogDebug("Listenable value [{type}] updated ({attribute})", packetDto.Id,
                     packetDto.Attribute);
         }
 
@@ -171,7 +174,7 @@ namespace PmdThing.Components.Networking
 
                             if (packet.Type.IsSubclassOf(typeof(PmdContainer)))
                             {
-                                if (packet.ParentContainer.HasValue)
+                                if (packet.ParentContainer.HasValue && packet.ParentContainer.Value != Base.BaseContainer.Id)
                                 {
                                     var parentContainer = Base.GetContainer(packet.ParentContainer.Value);
                                     if (parentContainer is PmdMultiContainer multiContainer)

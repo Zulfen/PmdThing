@@ -173,7 +173,8 @@ public struct PmdPacket()
         }
         else
         {
-            packetDto.Data = JsonSerializer.Deserialize<object[]>(packet.Data);
+            var asJson = JsonSerializer.Deserialize<JsonElement[]>(packet.Data);
+            packetDto.Data = PmdTypeUtils.ParseJsonElements(asJson);
         }
 
         return packetDto;

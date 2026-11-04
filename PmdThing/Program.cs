@@ -41,15 +41,15 @@ public class Program
         // Make a generic shared container. Was going to do this in GameBase but decided not to.
         // TODO: Maybe removed the shared components feature and enforce passing around components from a main container like thi
 
-        
-
         if (!headless)
         {
             game.RegisterComponent<Camera>(game.BaseContainer, false, out _);
         }
-
-        game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Vulpix, true);
-        game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Eevee, false);
+        else
+        {
+            game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Vulpix, true);
+            //game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Eevee, false);
+        }
 
         game.Start();
         server?.Cleanup();

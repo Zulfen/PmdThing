@@ -85,14 +85,18 @@ namespace PmdThing.Core.Network.Rokon
             }
         }
 
-        public PmdComponentId GetIdForTag(string tag, PmdContainerId parentId)
+        public PmdComponentId? GetIdForTag(string tag, PmdContainerId parentId)
         {
-            return _tagIds[new TagEntry(tag, parentId)];
+            if (_tagIds.TryGetValue(new TagEntry(tag, parentId), out var id))
+            {
+                return id;
+            }
+            return null;
         }
 
-        public string GetTagForId(PmdComponentId id)
+        public string? GetTagForId(PmdComponentId id)
         {
-            return _idTags[id].Tag;
+            return _idTags[id]?.Tag;
         }
 
         public abstract void ListenableValueChanged(dynamic current, dynamic previous, PacketDto packetDto);

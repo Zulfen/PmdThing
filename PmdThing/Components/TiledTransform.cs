@@ -1,5 +1,4 @@
-﻿using DotTiled;
-using PmdThing.Containers;
+﻿using PmdThing.Containers;
 using PmdThing.Core;
 using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
@@ -7,7 +6,6 @@ using PmdThing.Core.Util;
 namespace PmdThing.Components
 {
     [PmdServerSync]
-    [PmdClientSync]
     public class TiledTransform : PmdListenableComponent<PmdTileRef>
     {
 

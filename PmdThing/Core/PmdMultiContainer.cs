@@ -1,7 +1,6 @@
-﻿using PmdThing.Core.Util.Structures;
+﻿using PmdThing.Core.Util;
+using PmdThing.Core.Util.Structures;
 using System.Reflection;
-using System.Runtime.InteropServices.JavaScript;
-using PmdThing.Core.Util;
 using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core
@@ -57,7 +56,7 @@ namespace PmdThing.Core
                                 {
                                     try
                                     {
-                                        completeArgs[i] = Enum.ToObject(paramTypes[i], argumentToConvert);
+                                        completeArgs[i] = Enum.ToObject(paramTypes[i], Convert.ToInt32(argumentToConvert));
                                     }
                                     catch (ArgumentException)
                                     {
@@ -153,6 +152,13 @@ namespace PmdThing.Core
                 .GetAll(typeof(TContainer))
                 .Select(GetContainer<TContainer>)
                 .ToList();
+        }
+
+        public List<PmdContainerId> GetAllContainers()
+        {
+            return [.. _containerRegistry
+                .GetAll()
+                .Select(entry => entry.Id)];
         }
 
         public void DeregisterContainer(PmdContainer instance, PmdContainerId id)
