@@ -1,8 +1,6 @@
-﻿using PmdContainerId = System.Int32;
-
-namespace PmdThing.Core.Util
+﻿namespace PmdThing.Core.Util
 {
-    public class PmdContainerComponent<T> : PmdComponent where T : PmdMultiContainer
+    public class PmdContainerComponent<T> : PmdComponent where T : PmdContainer
     {
 
         public T ParentContainer { get; init; }
@@ -13,12 +11,12 @@ namespace PmdThing.Core.Util
             ParentContainer = (T) config.Parent!;
         }
 
-        public PmdContainerId GetChildContainer<TContainer>(out TContainer instance) where TContainer : PmdContainer
-        {
-            var id = ParentContainer.GetContainer<TContainer>(out var container);
-            instance = container;
-            return id;
-        }
+        //public PmdContainerId GetChildContainer<TContainer>(out TContainer instance) where TContainer : PmdContainer
+        //{
+        //    var id = ParentContainer.GetContainer<TContainer>(out var container);
+        //    instance = container;
+        //    return id;
+        //}
 
         public override void Cleanup()
         {

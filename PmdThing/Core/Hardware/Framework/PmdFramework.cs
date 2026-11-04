@@ -24,6 +24,7 @@ namespace PmdThing.Core.Hardware.Framework
 
             var serilogLogger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
+                .WriteTo.File("log.txt")
                 .WriteTo.Console(
                     outputTemplate: "{Timestamp:HH:mm:ss} {Level:u4}: {Message:lj}{NewLine}{Exception}"
                 )

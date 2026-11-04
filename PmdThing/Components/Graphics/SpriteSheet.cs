@@ -2,7 +2,7 @@
 using PmdThing.Core;
 using PmdThing.Core.Hardware.Graphics;
 
-namespace PmdThing.Components
+namespace PmdThing.Components.Graphics
 {
     public class SpriteSheet : PmdComponent
     {
@@ -24,7 +24,6 @@ namespace PmdThing.Components
 
         public SpriteSheet(PmdComponentConfig config, string path, int spriteWidth, int spriteHeight) : base(config)
         {
-
             _spriteSheetImage = Framework.Graphics.LoadImage(this, path);
 
             _spriteHeight = spriteHeight;
@@ -116,8 +115,8 @@ namespace PmdThing.Components
             {
                 X = x,
                 Y = y,
-                Width = _spriteWidth * SpriteScale,
-                Height = _spriteHeight * SpriteScale,
+                Width = GetScaledWidth(),
+                Height = GetScaledHeight(),
             };
 
             _spriteSheetImage.Draw(destRect, sourceRect, centered);

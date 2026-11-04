@@ -1,5 +1,5 @@
 ﻿using GlmSharp;
-using PmdThing.Components;
+using PmdThing.Components.Graphics;
 using System.Drawing;
 
 namespace PmdThing.Core.Util

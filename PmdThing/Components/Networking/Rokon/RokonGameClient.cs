@@ -2,6 +2,7 @@
 using PmdThing.Core;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices.JavaScript;
 
 namespace PmdThing.Components.Networking.Rokon
 {
@@ -19,8 +20,10 @@ namespace PmdThing.Components.Networking.Rokon
             AsyncInit = true;
             _port = port;
 
-            var ipHostInfo = Dns.GetHostEntry(host);
-            _ip = ipHostInfo.AddressList[0];
+            var hostEntry = Dns.GetHostEntry(host);
+            var ip = hostEntry.AddressList.FirstOrDefault(addr => addr.AddressFamily == AddressFamily.InterNetwork);
+
+            _ip = ip ?? throw new InvalidOperationException($"No IPv4 address found for host [{host}]");
         }
 
         public override async Task Init()

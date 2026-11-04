@@ -22,9 +22,7 @@ namespace PmdThing.Components.Networking.Rokon
             _server = GetBaseContainer<RokonSocketServer>();
             Socket = socket;
 
-            _endPoint = socket.RemoteEndPoint is not IPEndPoint endpoint
-                ? throw new InvalidOperationException("Socket is not connected")
-                : endpoint;
+            _endPoint = socket.RemoteEndPoint as IPEndPoint ?? throw new InvalidOperationException("Socket is not connected");
         }
 
         public override IPEndPoint GetEndpoint()

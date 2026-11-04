@@ -1,10 +1,10 @@
 ﻿using GlmSharp;
-using PmdThing.Components;
 using PmdThing.Core;
 using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util;
 using System.Drawing;
 using DotTiled;
+using PmdThing.Components.Graphics;
 
 namespace PmdThing.Containers
 {
@@ -97,6 +97,17 @@ namespace PmdThing.Containers
             }
 
             return tiles;
+        }
+
+        public async Task<Point> GetWorldSpaceAsync(PmdTileRef tile)
+        {
+            var tileWidth = await _tileWidthSrc.Task;
+            var tileHeight = await _tileHeightSrc.Task;
+
+            return new Point(
+                tile.Column * tileWidth * SpriteSheet.SpriteScale,
+                tile.Row * tileHeight * SpriteSheet.SpriteScale
+            );
         }
 
         public Point GetWorldSpace(PmdTileRef tile)

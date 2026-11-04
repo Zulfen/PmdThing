@@ -14,6 +14,10 @@ namespace PmdThing.Core
 
         public event Action<PmdContainerId, PmdContainer, object[]?>? ContainerRegistered;
 
+        public PmdContainerId RegisterContainer<TContainer>(params object[]? arguments) where TContainer : PmdContainer
+        {
+            return RegisterContainer(null, typeof(TContainer), out _, arguments);
+        }
 
         public PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, out PmdContainer instance, params object[]? arguments)
         {
@@ -35,6 +39,7 @@ namespace PmdThing.Core
             }
 
             // This big for loop makes sure serialized enums are handled for constructors if needed (they get sent as ints)
+            // JSON also converts all numbers to doubles, which is annoying. The consequences of safe serialisation.
             ConstructorInfo? containerConstructor = null;
             foreach (var constructor in containerType.GetConstructors())
             {
@@ -48,11 +53,12 @@ namespace PmdThing.Core
 
                     for (var i = 0; i < paramTypes.Length; i++)
                     {
+                        var argumentToConvert = completeArgs[i];
+
                         if (!paramTypes[i].IsInstanceOfType(completeArgs[i]))
                         {
                             if (paramTypes[i].IsEnum)
                             {
-                                var argumentToConvert = completeArgs[i];
                                 // ReSharper disable once UseSymbolAlias
                                 if (argumentToConvert.IsNumericType())
                                 {
@@ -66,6 +72,10 @@ namespace PmdThing.Core
                                         break;
                                     }
                                 }
+                            }
+                            else if (argumentToConvert.IsNumericType())
+                            {
+                                completeArgs[i] = Convert.ToInt32(argumentToConvert);
                             }
                             else
                             {
@@ -82,7 +92,7 @@ namespace PmdThing.Core
             if (containerConstructor == null)
             {
                 throw new ArgumentException(
-                    $"Container {containerType} does not have a constructor that matches the provided arguments: {arguments}");
+                    $"Container {containerType} does not have a constructor that matches the provided arguments: {string.Join(", ", arguments ?? [])}");
             }
 
             var containerInstance = containerConstructor.Invoke(completeArgs);

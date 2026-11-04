@@ -5,7 +5,7 @@ using PmdThing.Core.Util;
 using System.Xml.Serialization;
 using static PmdThing.Core.Util.PmdConstants;
 
-namespace PmdThing.Components
+namespace PmdThing.Components.Graphics
 {
     public class SpriteRenderer : PmdComponent
     {
@@ -90,7 +90,7 @@ namespace PmdThing.Components
         private Dictionary<AnimationType, PmdAnimation> LoadAllAnimations()
         {
             var xmlPath = Path.Combine(GetDataPath(), "AnimData.xml");
-            Dictionary<AnimationType, PmdAnimation> animations = new();
+            Dictionary<AnimationType, PmdAnimation> animations = [];
 
             try
             {

@@ -221,7 +221,7 @@ namespace PmdThing.Components.Networking
                                                     SendRequest(QueryType.SendComponents);
                                                 }
 
-                                            });
+                                            }, waitForFinish: true);
 
                                         }
 

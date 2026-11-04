@@ -1,4 +1,5 @@
-﻿using PmdThing.Containers;
+﻿using PmdThing.Components.Graphics;
+using PmdThing.Containers;
 using PmdThing.Core;
 
 namespace PmdThing.Components

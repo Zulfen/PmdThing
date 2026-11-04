@@ -27,8 +27,6 @@ namespace PmdThing.Core.Hardware.Graphics
         public abstract void Destroy();
 
     }
-
-    // TODO: RectangleF exists...
     
 
 }

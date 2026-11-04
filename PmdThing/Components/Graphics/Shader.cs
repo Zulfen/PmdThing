@@ -2,7 +2,7 @@
 using PmdThing.Core;
 using System.Drawing;
 
-namespace PmdThing.Components
+namespace PmdThing.Components.Graphics
 {
     public abstract class Shader(PmdComponentConfig config, string vertexPath, string fragmentPath) : PmdComponent(config)
     {

@@ -5,7 +5,7 @@ using PmdThing.Core;
 using PmdThing.Core.Util;
 using System.Drawing;
 
-namespace PmdThing.Components
+namespace PmdThing.Components.Graphics
 {
     public class TiledWorldRenderer : PmdContainerComponent<TiledWorld>
     {

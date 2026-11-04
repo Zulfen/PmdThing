@@ -1,17 +1,16 @@
 ﻿using Microsoft.Extensions.Logging;
-using PmdThing.Containers;
 using PmdThing.Core;
+using PmdThing.Core.Network;
 using PmdThing.Core.Network.Rokon;
-using PmdThing.Core.Util;
 using System.Collections.Concurrent;
 using System.Reflection;
-using PmdThing.Core.Network;
+using static PmdThing.Core.Network.Rokon.PmdPacket;
 using PmdComponentId = System.Int32;
 using PmdContainerId = System.Int32;
 
 namespace PmdThing.Components.Networking
 {
-    // TODO: make this a container
+
     public abstract class GameServer<TAddr, TConn> : PmdNetworkHandler, IPmdGameServer where TAddr : notnull where TConn : ServerConnection<TAddr>
     {
 
@@ -23,7 +22,7 @@ namespace PmdThing.Components.Networking
         private readonly Dictionary<QueryType, QueryHandler> _queryHandlers = [];
 
         private readonly ConcurrentDictionary<PmdComponentId, PmdComponent> _syncComponents = [];
-        private readonly ConcurrentDictionary<PmdContainerId, PmdPacket.PacketDto> _containerTracker = [];
+        private readonly LinkedList<PacketDto> _containerTracker = [];
 
         private readonly Dictionary<TConn, PmdComponentId> _connectionIds = [];
 
@@ -53,7 +52,7 @@ namespace PmdThing.Components.Networking
                 multiContainer.ContainerRegistered += RegisterContainer;
             }
 
-            var packet = new PmdPacket.PacketDto
+            var packet = new PacketDto
             {
                 Type = containerType,
                 Data = arguments,
@@ -64,7 +63,7 @@ namespace PmdThing.Components.Networking
                 Source = PmdPacketSource.Server,
             };
 
-            _containerTracker.TryAdd(id, packet);
+            _containerTracker.AddLast(packet);
 
             SendToAll(packet);
         }
@@ -95,13 +94,10 @@ namespace PmdThing.Components.Networking
                 Framework.Logger.LogInformation("Client connected: [{addr}]", endpoint);
                 ClientConnected?.Invoke(connection);
 
-                foreach (var containerId in Base.BaseContainer.GetAllContainers())
+                foreach (var packet in _containerTracker)
                 {
-                    if (_containerTracker.TryGetValue(containerId, out var packet))
-                    {
-                        SendPacket(packet, connection);
-                        Framework.Logger.LogDebug("Sending container update ({type}) ({action}) to client: [{addr}]", packet.Type, packet.PmdPacketType, connection.GetEndpoint());
-                    }
+                    SendPacket(packet, connection);
+                    Framework.Logger.LogDebug("Sending container update ({type}) ({action}) to client: [{addr}]", packet.Type, packet.PmdPacketType, connection.GetEndpoint());
                 }
 
             }

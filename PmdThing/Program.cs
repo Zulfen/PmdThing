@@ -21,7 +21,7 @@ public class Program
 
         if (headless)
         {
-            game.RegisterServer<RokonSocketServer>(2312);
+            game.RegisterServer<RokonSocketServer>("localhost", 2312);
 
             var tmxLoader = new TmxTileProvider(@"TileSets\142map.tmx");
             game.RegisterContainer<TiledWorld>(out _,tmxLoader);
@@ -51,6 +51,8 @@ public class Program
         {
             game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Vulpix, true);
             //game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Eevee, false);
+            game.RegisterContainer<DrawableTextHandler>(out var textRenderer);
+            textRenderer.AddLabel("hello this is text", 20, 20);
         }
 
         game.Start();

@@ -25,15 +25,12 @@ namespace PmdThing.Core
             public required PmdComponent Instance { get; init; }
         }
 
+        public record PmdQueuedAction(Action Task, AutoResetEvent? WaitHandle);
+
         private static PmdGameBase? _instance;
         public readonly PmdFramework Framework;
 
-        private bool _headless;
-
-        // TODO: add update / render sorting
-        // TODO: maybe add a way to listen for another component to update
-        // MovementController?
-
+        private readonly bool _headless;
         private PmdComponentId _componentCounter;
 
         private readonly PmdComponentRegistry _allComponents = new();
@@ -43,7 +40,7 @@ namespace PmdThing.Core
 
         private readonly ConcurrentQueue<PmdQueuedComponent> _componentActions = [];
         private readonly List<PmdComponent> _processList = [];
-        private readonly ConcurrentQueue<Action> _mainThreadTasks = new();
+        private readonly ConcurrentQueue<PmdQueuedAction> _mainThreadTasks = new();
         public readonly PmdMultiContainer BaseContainer;
         public event Action<PmdComponentId, PmdComponent, bool>? ComponentRegistered;
 
@@ -313,9 +310,12 @@ namespace PmdThing.Core
             return _componentCounter;
         }
 
-        public void SubmitTask(Action task)
+        public void SubmitTask(Action task, bool waitForFinish = false)
         {
-            _mainThreadTasks.Enqueue(task);
+            var waitHandle = waitForFinish ? new AutoResetEvent(false) : null;
+            _mainThreadTasks.Enqueue(new PmdQueuedAction(task, waitHandle));
+
+            waitHandle?.WaitOne();
         }
 
         public bool IsMainThread()
@@ -373,7 +373,8 @@ namespace PmdThing.Core
 
                 if (_mainThreadTasks.TryDequeue(out var mainThreadTask))
                 {
-                    mainThreadTask.Invoke();
+                    mainThreadTask.Task();
+                    mainThreadTask.WaitHandle?.Set();
                 }
 
                 if (_headless) continue;

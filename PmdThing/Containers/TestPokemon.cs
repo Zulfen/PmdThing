@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using PmdThing.Components;
+using PmdThing.Components.Graphics;
 using PmdThing.Components.Graphics.OpenGL;
 using PmdThing.Core;
 using PmdThing.Core.Hardware.Graphics;
@@ -55,7 +56,10 @@ namespace PmdThing.Containers
                 GetIfExists<Camera>(false)?
                     .SetTarget(this);
 
-                RegisterComponent<TiledInput>(true);
+                if (!capabilities.Headless)
+                {
+                    RegisterComponent<TiledInput>(true);
+                }
 
                 RegisterComponent<PlayerCollision>(false, out var collision, _tiledTransform);
                 collision.CollisionCheck += PlayerCollision_Changed;

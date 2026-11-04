@@ -11,20 +11,24 @@ namespace PmdThing.Components.Networking.Rokon
         private readonly Socket _serverSocket;
         private readonly int _port;
 
-        public RokonSocketServer(PmdContainerConfig config, int port) : base(config)
+        public RokonSocketServer(PmdContainerConfig config, string host, int port) : base(config)
         {
             AsyncInit = true;
 
             _port = port;
-            var ipHost = Dns.GetHostEntry("localhost");
-            var ipAddr = ipHost.AddressList[0];
-            var localEndPoint = new IPEndPoint(ipAddr, _port);
+            var ipHost = Dns.GetHostEntry(host);
+            var ipAddr = ipHost.AddressList.FirstOrDefault(addr => addr.AddressFamily == AddressFamily.InterNetwork);
 
+            if (ipAddr == null)
+            {
+                throw new InvalidOperationException($"No IPv4 address found for host [{host}]");
+            }
+
+            var localEndPoint = new IPEndPoint(ipAddr, _port);
             _serverSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             _serverSocket.Bind(localEndPoint);
 
-
-            Framework.Logger.LogInformation("Listening on [{ip}:{port}]", ipAddr.MapToIPv4(), port);
+            Framework.Logger.LogInformation("Listening on [{ip}:{port}]", ipAddr, port);
         }
 
         public override async Task Init()

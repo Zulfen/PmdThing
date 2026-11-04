@@ -8,6 +8,7 @@ namespace PmdThing.Core.Network
     {
         void RegisterHandler(QueryType type, QueryHandler handler);
 
+        // TODO: does this need to be here
         IEnumerable<KeyValuePair<PmdComponentId, PmdComponent>> GetSyncComponents();
 
         // ReSharper disable once UseSymbolAlias

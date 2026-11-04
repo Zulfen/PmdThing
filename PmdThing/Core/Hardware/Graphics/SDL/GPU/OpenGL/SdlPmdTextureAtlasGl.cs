@@ -17,7 +17,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
 
             public List<int> RowHeights = [];
 
-            public Dictionary<SdlPmdImage, Point> TextureLocations = [];
+            public OrderedDictionary<SdlPmdImage, Point> TextureLocations = [];
             public int TextureId = GL.GenTexture();
             public SDL_Surface* Surface = SDL_CreateSurface(MaxWidth, MaxHeight, SDL_PixelFormat.SDL_PIXELFORMAT_ABGR8888);
         }
@@ -31,7 +31,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
 
             Point finalPosition = new();
 
-            // Below is a sort of dynamic (ladder?) stitch I wrote by hand.
+            // Below is a simple dynamic stitch that packs in rows.
             // It seems to work fine when there's a handful of sprites, but I have seen it blow up when there's tons.
             // 2048x2048 seems the best size for the PMD sprites atm
             // TODO: revisit this
@@ -123,9 +123,6 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
             SDL_SaveBMP(tempAtlas, $"atlas{_currentSubAtlas.TextureId}.bmp");
 
             GL.BindTexture(TextureTarget.Texture2D, _currentSubAtlas.TextureId);
-
-            SDL_LockSurface(tempAtlas);
-
             GL.TexImage2D
             (
                 TextureTarget.Texture2D,
@@ -139,8 +136,6 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
                 tempAtlas->pixels
             );
 
-            SDL_UnlockSurface(tempAtlas);
-
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
 
@@ -151,8 +146,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
 
         public override void RemoveTexture(SdlPmdImage image)
         {
-            // TODO: lol
-            throw new NotImplementedException();
+            // TODO: rebuild atlas if the image isn't the lastest one added. Check in current sub atlas first.
         }
 
         public override void Cleanup()

@@ -12,12 +12,6 @@ namespace PmdThing.Components
         public TiledInput(PmdComponentConfig config) : base(config)
         {
             _tiledTransform = GetParentComponent<TiledTransform>();
-            Framework.Keyboard.KeyDown += KeyboardInput_KeyDown; 
-        }
-
-        private void KeyboardInput_KeyDown(PmdKey key)
-        {
-            
         }
 
         public override void Update()
