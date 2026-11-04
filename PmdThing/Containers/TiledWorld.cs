@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using PmdThing.Components;
+﻿using PmdThing.Components;
 using PmdThing.Core;
 using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util;

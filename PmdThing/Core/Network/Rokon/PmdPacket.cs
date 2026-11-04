@@ -14,9 +14,10 @@ public struct PmdPacket()
     {
         public required Type Type;
         public required PacketType PacketType;
-        public required int Id;
+        public int Id;
         public bool Unique;
-        public string? Field;
+        public string? Attribute;
+        public Type? DataType;
         public object[]? Data;
     }
 
@@ -30,19 +31,22 @@ public struct PmdPacket()
     public PacketType Type;
 
     [Key(3)]
-    public string ComponentType;
+    public required string ComponentType;
 
     [Key(4)]
     public int ComponentId;
 
     [Key(5)]
-    public string Data;
+    public required string Data;
 
     [Key(6)] 
-    public string? Field;
+    public string? Attribute;
 
     [Key(7)]
-    public bool Unique;
+    public bool Unique = true;
+
+    [Key(8)] 
+    public string? DataType;
 
     // https://stackoverflow.com/a/15020402
 
@@ -51,22 +55,33 @@ public struct PmdPacket()
         return packet.Data is { Length: > 0 };
     }
 
-    public static byte[] Encode(Type componentType, object[] values, int componentId, PacketType type, bool unique, string? field)
+    public static byte[] Encode(Type componentType, object[] values, int componentId, PacketType type, bool unique, string? field, Type? dataType)
     {
         if (!TypeCheck(componentType, true))
         {
             throw new ArgumentException("Not allowed");
         }
 
-        var className = componentType.FullName ?? componentType.Name;
+        if (dataType != null)
+        {
+            if (!TypeCheck(dataType, true))
+            {
+                throw new ArgumentException("Not allowed");
+            }
+        }
+
+        var componentName = componentType.FullName ?? componentType.Name;
+        var dataName = dataType?.FullName ?? dataType?.Name;
+
         var packet = new PmdPacket
         {
             Type = type,
             ComponentId = componentId,
-            ComponentType = className,
+            ComponentType = componentName,
             Data = JsonSerializer.Serialize(values),
-            Field = field,
-            Unique = unique
+            Attribute = field,
+            Unique = unique,
+            DataType = dataName
         };
 
         return MessagePackSerializer.Serialize(packet);
@@ -77,9 +92,9 @@ public struct PmdPacket()
         return type.IsPrimitive || type.IsValueType || (isComponent && type.IsSubclassOf(typeof(PmdListenableComponent<>))) || type == typeof(PmdListenableValue<>);
     }
 
-    public static byte[] Encode(Type componentType, object value, int componentId, PacketType type, bool unique, string? field)
+    public static byte[] Encode(Type componentType, object value, int componentId, PacketType type, bool unique, string? field, Type? dataType)
     {
-        return Encode(componentType, [value], componentId, type, unique, field);
+        return Encode(componentType, [value], componentId, type, unique, field, dataType);
     }
 
     public static PacketDto Decode(byte[] packetBytes)
@@ -90,21 +105,47 @@ public struct PmdPacket()
         var packet = MessagePackSerializer.Deserialize<PmdPacket>(packetBytes, options);
 
         var componentType = System.Type.GetType(packet.ComponentType);
-        if (componentType == null) throw new InvalidDataException($"Could not find type {packet.ComponentType}");
+        if (componentType == null) throw new InvalidDataException($"Could not find component type {packet.ComponentType}");
 
         if (!TypeCheck(componentType, true))
         {
             throw new InvalidDataException($"Given component type isn't valid: {packet.ComponentType}");
         }
 
-        return new PacketDto
+        Type? dataType = null;
+        if (packet.DataType != null)
+        {
+            dataType = System.Type.GetType(packet.DataType);
+            if (dataType == null) throw new InvalidDataException($"Could not find data type {packet.ComponentType}");
+
+            if (!TypeCheck(dataType, true))
+            {
+                throw new InvalidDataException($"Given data type isn't valid: {packet.DataType}");
+            }
+        }
+        
+        var packetDto = new PacketDto
         {
             Id = packet.ComponentId,
             Type = componentType,
-            Data = JsonSerializer.Deserialize<object[]>(packet.Data),
             PacketType = packet.Type,
-            Field = packet.Field,
+            Attribute = packet.Attribute,
             Unique = packet.Unique
         };
+
+        if (dataType != null)
+        {
+            var result = JsonSerializer.Deserialize(packet.Data, dataType);
+            if (result != null)
+            {
+                packetDto.Data = [result];
+            }
+        }
+        else
+        {
+            packetDto.Data = JsonSerializer.Deserialize<object[]>(packet.Data);
+        }
+
+        return packetDto;
     }
 }

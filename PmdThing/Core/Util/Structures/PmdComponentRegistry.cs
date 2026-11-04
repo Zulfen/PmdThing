@@ -79,7 +79,7 @@ namespace PmdThing.Core.Util.Structures
             List<PmdComponentEntry> entries = [];
             foreach (var mapEntry in _typeMap)
             {
-                foreach (PmdComponentId id in mapEntry.Value)
+                foreach (var id in mapEntry.Value)
                 {
                     PmdComponentEntry componentEntry;
                     componentEntry.Id = id;

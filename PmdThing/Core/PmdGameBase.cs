@@ -195,7 +195,14 @@ namespace PmdThing.Core
         public PmdContainerId RegisterContainer<TContainer>(out TContainer instance, params object[]? arguments)
             where TContainer : PmdContainer
         {
-            return BaseContainer.RegisterContainer(out instance, arguments);
+            var id = BaseContainer.RegisterContainer(null, typeof(TContainer), out var container, arguments);
+            instance = (TContainer)container;
+            return id;
+        }
+
+        public PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, params object[]? arguments)
+        {
+            return BaseContainer.RegisterContainer(id, containerType, out _, arguments);
         }
 
         public TContainer GetContainer<TContainer>(PmdContainerId id) where TContainer : PmdContainer
@@ -223,12 +230,12 @@ namespace PmdThing.Core
                 .ToList();
         }
 
-        public List<PmdComponent> GetAllComponents()
+        public Dictionary<PmdComponent, PmdComponentId> GetAllComponents()
         {
             var componentIds = _allComponents.GetAll();
             return componentIds
-                .Select(entry => _runtimeComponents[entry.Id])
-                .ToList();
+                .Select(entry => entry.Id)
+                .ToDictionary(id => _runtimeComponents[id]);
         }
 
         public PmdComponentId GetNextId()

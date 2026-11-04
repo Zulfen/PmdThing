@@ -6,6 +6,7 @@ using PmdThing.Core.Hardware.Graphics;
 using PmdThing.Core.Util;
 using System.Drawing;
 using System.Net.Security;
+using PmdThing.Components.Networking;
 
 namespace PmdThing.Components
 {

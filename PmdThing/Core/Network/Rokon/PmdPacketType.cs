@@ -2,8 +2,9 @@
 {
     public enum PacketType
     {
-        Add,
-        Remove,
-        Update
+        AddComponent,
+        RemoveComponent,
+        UpdateComponent,
+        Query
     }
 }

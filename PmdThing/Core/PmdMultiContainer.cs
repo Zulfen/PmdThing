@@ -18,7 +18,7 @@ namespace PmdThing.Core
             _runtimeContainers.Add(id, instance);
         }
 
-        public PmdContainerId RegisterContainer<TContainer>(out TContainer instance, params object[]? arguments) where TContainer : PmdContainer
+        public PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, out PmdContainer instance, params object[]? arguments)
         {
             object[] completeArgs;
             if (arguments != null)
@@ -34,23 +34,23 @@ namespace PmdThing.Core
                 completeArgs = [Base, framework];
             }
             
-            var containerInstance = Activator.CreateInstance(typeof(TContainer), completeArgs);
-            if (containerInstance is TContainer container)
+            var containerInstance = Activator.CreateInstance(containerType, completeArgs);
+            if (containerInstance is PmdContainer container)
             {
                 instance = container;
                 _containerCounter++;
-                AddContainer(_containerCounter, instance);
-                return _containerCounter;
+                AddContainer(id ?? _containerCounter, instance);
+                return id ?? _containerCounter;
             }
 
             throw new ArgumentException(
-                $"Container {typeof(TContainer)} could not be initialised with the following arguments: {arguments}");
+                $"Container {containerType} could not be initialised with the following arguments: {arguments}");
 
         }
 
         public PmdContainerId RegisterEmptyContainer(out PmdContainer instance)
         {
-            var id = RegisterContainer(out instance);
+            var id = RegisterContainer(null, typeof(PmdContainer), out instance);
             return id;
         }
 

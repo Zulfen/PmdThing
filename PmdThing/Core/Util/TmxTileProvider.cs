@@ -1,8 +1,6 @@
-﻿using System.Drawing;
-using System.Runtime.CompilerServices;
-using DotTiled;
+﻿using DotTiled;
 using DotTiled.Serialization;
-using PmdThing.Core.Hardware.Graphics;
+using System.Drawing;
 
 namespace PmdThing.Core.Util
 {
