@@ -74,7 +74,7 @@ namespace PmdThing.Components.Networking.Rokon
         // https://github.com/MessagePack-CSharp/MessagePack-CSharp/issues/388
         protected override byte[] ReceiveBytes()
         {
-            var buffer = new byte[1024];
+            var buffer = new byte[4096];
 
             try
             {
@@ -84,7 +84,11 @@ namespace PmdThing.Components.Networking.Rokon
 
                     if (result == 0)
                     {
-                        _socketClosed = true;
+                        lock (_socketLock)
+                        {
+                            _socketClosed = true;
+                        }
+
                         Cleanup();
                     }
 
@@ -109,7 +113,10 @@ namespace PmdThing.Components.Networking.Rokon
             {
                 lock (_socketLock)
                 {
-                    _socket?.Send(bytes);
+                    if (!_socketClosed)
+                    {
+                        _socket?.Send(bytes);
+                    }   
                 }
                 
             }
@@ -120,9 +127,5 @@ namespace PmdThing.Components.Networking.Rokon
             }
         }
 
-        public override bool IsNetworkConnected()
-        {
-            return !(_socket?.Poll(1, SelectMode.SelectRead) == true && _socket?.Available == 0);
-        }
     }
 }

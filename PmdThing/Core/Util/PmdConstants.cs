@@ -1,9 +1,10 @@
 ﻿using GlmSharp;
 using PmdThing.Components;
+using System.Drawing;
 
 namespace PmdThing.Core.Util
 {
-    public class PmdConstants
+    public static class PmdConstants
     {
 
         public static vec2 UpVector = new(0, -1);
@@ -17,7 +18,9 @@ namespace PmdThing.Core.Util
         public enum Pokemon
         {
             Vulpix,
-            Eevee
+            Eevee,
+            Ninetales,
+            Zorua
         }
 
         public enum AnimationType
@@ -105,9 +108,15 @@ namespace PmdThing.Core.Util
 
         }
 
+        // TODO: implicit conversion?
         public static PmdTileRef Vec2ToTile(vec2 position)
         {
             return new PmdTileRef((int)position.y, (int)position.x);
+        }
+
+        public static vec2 ToVec2(this Point point)
+        {
+            return new vec2(point.X, point.Y);
         }
 
     }

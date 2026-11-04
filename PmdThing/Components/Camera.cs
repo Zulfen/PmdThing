@@ -1,5 +1,4 @@
-﻿using GlmSharp;
-using PmdThing.Containers;
+﻿using PmdThing.Containers;
 using PmdThing.Core;
 
 namespace PmdThing.Components
@@ -16,31 +15,21 @@ namespace PmdThing.Components
         }
         
 
-        public void SetTarget(PmdContainer container, Action<vec2, vec2>? changedListener = null)
+        public void SetTarget(PmdContainer container)
         {
             SetTarget(container.GetComponent<Transform>());
         }
 
-        public void SetTarget(Transform transform, Action<vec2, vec2>? changedListener = null)
+        public void SetTarget(Transform transform)
         {
             var tiledWorld = GetBaseContainerComponent<TiledWorld, TiledWorldRenderer>();
 
-            if (changedListener != null)
-            {
-                _target.Changed -= changedListener;
-            }
             _target.Changed -= tiledWorld.Camera_OffsetChanged;
-
-
             _target.IsTarget = false;
+
             _target = transform;
+
             _target.IsTarget = true;
-
-
-            if (changedListener != null)
-            {
-                _target.Changed += changedListener;
-            }
             _target.Changed += tiledWorld.Camera_OffsetChanged;
         }
 

@@ -9,6 +9,7 @@ namespace PmdThing.Core.Util
     {
         public int Row { get; } = Row;
         public int Column { get; } = Column;
+        public bool Valid { get; set; } = true;
 
         public static PmdTileRef operator -(PmdTileRef left, PmdTileRef right)
         {

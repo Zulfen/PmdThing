@@ -108,10 +108,15 @@ namespace PmdThing.Components.Networking
                 // debug
                 Base.SubmitTask(() =>
                 {
-                    Base.RegisterContainer<TestPokemon>(out var vee, PmdConstants.Pokemon.Eevee, false);
+                    Base.RegisterContainer<TestPokemon>(out var nine, PmdConstants.Pokemon.Ninetales, false);
 
-                    var tile = vee.GetComponent<TiledTransform>();
-                    tile.MoveTo(new PmdTileRef(5, 5));
+                    var nineTile = nine.GetComponent<TiledTransform>();
+                    nineTile.MoveTo(new PmdTileRef(3, 3));
+
+                    Base.RegisterContainer<TestPokemon>(out var zorua, PmdConstants.Pokemon.Zorua, false);
+
+                    var zoruaTile = zorua.GetComponent<TiledTransform>();
+                    zoruaTile.MoveTo(new PmdTileRef(2, 1));
                 });
             }
         }

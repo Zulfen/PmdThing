@@ -9,21 +9,20 @@ namespace PmdThing.Components
     public class TiledTransform : PmdListenableComponent<PmdTileRef>
     {
 
-        [PmdServerSync]
-        public PmdListenableValue<PmdTileRef> Destination;
+        private readonly Timer _timer;
 
-        [PmdServerSync]
-        public PmdListenableValue<PmdConstants.AnimationDirection> Direction;
+        public PmdServerValue<PmdTileRef> Destination;
+
+        public PmdServerValue<PmdConstants.AnimationDirection> Direction;
 
         private readonly Transform _transform;
         private readonly TiledWorld _world;
 
-        public PmdListenableValue<bool> CanMove;
+        public PmdServerValue<bool> CanMove;
 
-        public PmdListenableValue<bool> Moving;
+        public PmdServerValue<bool> Moving;
 
-        [PmdServerSync]
-        public PmdListenableValue<float> Speed;
+        public PmdServerValue<float> Speed;
 
         public TiledTransform(PmdComponentConfig config, PmdTileRef tile) : this(config, tile.Row, tile.Column)
         {
@@ -31,21 +30,19 @@ namespace PmdThing.Components
 
         public TiledTransform(PmdComponentConfig config, int column, int row) : base(config, new PmdTileRef(row, column))
         {
-            Destination = new PmdListenableValue<PmdTileRef>(this, new PmdTileRef(0, 0));
-            CanMove = new PmdListenableValue<bool>(this, true);
-            Moving = new PmdListenableValue<bool>(this, false);
-            Speed = new PmdListenableValue<float>(this, 2f);
+            Destination = new PmdServerValue<PmdTileRef>(this, new PmdTileRef(0, 0));
+            CanMove = new PmdServerValue<bool>(this, true);
+            Moving = new PmdServerValue<bool>(this, false);
+            Speed = new PmdServerValue<float>(this, 2f);
 
-            Direction = new PmdListenableValue<PmdConstants.AnimationDirection>(this,
+            Direction = new PmdServerValue<PmdConstants.AnimationDirection>(this,
                 PmdConstants.AnimationDirection.South);
 
-            RegisterIfNotExist(true, out _transform, 0, 0);
+            RegisterSyncedIfNotExist(true, "transform", out _transform, 0, 0);
 
             // TODO: Account for multiple tiled worlds
             _world = GetBaseContainer<TiledWorld>();
-
-            GetSharedComponent<Timer>()
-               .RegisterTask(TiledPosition_FixedUpdate);
+            _timer = GetSharedComponent<Timer>();
 
         }
 
@@ -58,10 +55,37 @@ namespace PmdThing.Components
 
         public void MoveTo(PmdTileRef tile, float speed = 2f)
         {
+            if (Moving.Get()) return;
+
             FaceTowards(tile);
             Speed.Set(speed);
 
             Destination.Set(tile);
+            Moving.Set(true);
+
+            // this sucks mega balls 
+            var timerId = Register<Timer>(true, out var timer, (double)1000 / 30, ProcessingOrder.Update);
+            timer.RegisterTask(() =>
+            {
+                var pointVector = _transform.ToVec2();
+                var distanceVector = _world.GetWorldSpace(tile).ToVec2() - pointVector;
+                var step = Speed.Get(); //* Framework.Graphics.GetDelta();
+
+                if (distanceVector.Length <= step)
+                {
+                    Moving.Set(false);
+
+                    SetValue(tile);
+                    Destination.Set(tile);
+
+                    DeregisterParent<Timer>(timerId, true);
+                }
+                else if (CanMove.Get() && distanceVector.Length > 0)
+                {
+                    var unitPos = distanceVector / distanceVector.Length;
+                    _transform.Set(pointVector + unitPos * step);
+                }
+            });
         }
 
         public void MoveInDirection(PmdConstants.AnimationDirection direction)
@@ -71,36 +95,10 @@ namespace PmdThing.Components
             MoveTo(newTile, 3f);
         }
 
-        public void TiledPosition_FixedUpdate()
-        {
-            var destVector = _world.GetWorldSpace(Destination.Get());
-            var distanceVector = destVector - _transform.ComponentValue;
-            var step = Speed.Get(); //* Framework.Graphics.GetDelta();
-
-            if (distanceVector.Length <= step && distanceVector.Length > 0 && Moving.Get())
-            {
-                _transform.ComponentValue = destVector;
-                Moving.Set(false);
-
-                ComponentValue = Destination.Get();
-            }
-            else if (CanMove.Get() && distanceVector.Length > 0)
-            {
-                if (!Moving.Get()) Moving.Set(true);
-
-                var unitPos = distanceVector / distanceVector.Length;
-                _transform.ComponentValue += unitPos * step;
-            }
-            else
-            {
-                Moving.Set(false);
-            }
-        }
-
         protected override void SetValue(PmdTileRef tile)
         {
-            base.SetValue(tile);
             _transform.ComponentValue = _world.GetWorldSpace(tile);
+            base.SetValue(tile);
         }
 
     }

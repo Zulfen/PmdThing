@@ -3,6 +3,7 @@ using PmdThing.Components;
 using PmdThing.Core;
 using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util;
+using System.Drawing;
 
 namespace PmdThing.Containers
 {
@@ -94,7 +95,7 @@ namespace PmdThing.Containers
             return tiles;
         }
 
-        public vec2 GetWorldSpace(PmdTileRef tile)
+        public Point GetWorldSpace(PmdTileRef tile)
         {
             var tileWidth = _tileWidthSrc.Task
                 //.WaitAsync(TimeSpan.FromSeconds(5))
@@ -104,7 +105,7 @@ namespace PmdThing.Containers
                 //.WaitAsync(TimeSpan.FromSeconds(5))
                 .Result;
 
-            return new vec2(
+            return new Point(
                 tile.Column * tileWidth * SpriteSheet.SpriteScale,
                 tile.Row * tileHeight * SpriteSheet.SpriteScale
             );

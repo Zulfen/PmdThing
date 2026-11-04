@@ -13,7 +13,7 @@ namespace PmdThing.Components
 
         private readonly List<TiledTransform> _otherTiles = [];
 
-        public event Action<bool, PmdTileRef>? OnCollision;
+        public event Action<bool, PmdTileRef>? CollisionChange;
 
         public Collision(PmdComponentConfig config, TiledTransform tiledTransform) : base(config)
         {
@@ -34,7 +34,7 @@ namespace PmdThing.Components
             }
 
             var collided = worldColliding || transformsColliding;
-            OnCollision?.Invoke(collided, current);
+            CollisionChange?.Invoke(collided, current);
         }
 
         public void RegisterTransform(TiledTransform transform)

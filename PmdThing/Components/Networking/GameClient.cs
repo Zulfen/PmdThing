@@ -78,6 +78,7 @@ namespace PmdThing.Components.Networking
             value?.SetValue(component, data);
         }
 
+        // TODO: this could be moved to the network handler
         private void UpdateListenableValue(PmdContainerId parentId, string tag, string fieldName, object data)
         {
             var id = GetIdForTag(tag, parentId);
@@ -91,13 +92,14 @@ namespace PmdThing.Components.Networking
 
             var setMethod = valueInstance?
                 .GetType()
-                .GetMethod("Set");
+                .GetMethod("SetChanged");
 
-            setMethod?.Invoke(valueInstance, [data]);
+            setMethod?.Invoke(valueInstance, [true, data]);
         }
 
         public override void ListenableValueChanged(dynamic current, dynamic previous, PmdPacket.PacketDto packetDto)
         {
+            if (packetDto.Source == PmdPacketSource.Client) return;
             var tag = GetTagForId(packetDto.Id);
 
             packetDto.Data = [current];
@@ -336,8 +338,6 @@ namespace PmdThing.Components.Networking
         }
 
         public abstract TAddr GetEndpoint();
-
-        public abstract bool IsNetworkConnected();
 
         public virtual void Cleanup()
         {

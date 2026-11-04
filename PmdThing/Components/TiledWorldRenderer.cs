@@ -55,9 +55,9 @@ namespace PmdThing.Components
             }, ProcessingOrder.Update);
         }
 
-        public void Camera_OffsetChanged(vec2 currentPos, vec2 prevPos)
+        public void Camera_OffsetChanged(Point currentPos, Point prevPos)
         {
-            Offset = currentPos;
+            Offset = currentPos.ToVec2();
         }
 
         public override void Render()

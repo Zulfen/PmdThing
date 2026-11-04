@@ -206,6 +206,11 @@ namespace PmdThing.Core
             return _parent!.RegisterIfNotExist<TComponent>(unique, arguments);
         }
 
+        public bool IsOnServer()
+        {
+            return Server != null;
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposedValue)

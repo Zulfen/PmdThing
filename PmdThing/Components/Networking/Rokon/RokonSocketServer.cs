@@ -55,7 +55,7 @@ namespace PmdThing.Components.Networking.Rokon
 
         protected override byte[] ReceiveBytes(RokonServerConnection connection)
         {
-            var buffer = new byte[1024];
+            var buffer = new byte[4096];
 
             try
             {

@@ -136,9 +136,15 @@ namespace PmdThing.Components
 
         public override void Render()
         {
-            var spritePosition = _transform.IsTarget
-                ? _worldRenderer.ScreenCenter - _spriteCenter
-                : _worldRenderer.ScreenCenter - _spriteCenter - _worldRenderer.Offset + _transform.ComponentValue;
+            vec2 spritePosition;
+            if (_transform.IsTarget)
+            {
+                spritePosition = _worldRenderer.ScreenCenter - _spriteCenter;
+            }
+            else
+            {
+                spritePosition = _worldRenderer.ScreenCenter - _spriteCenter - _worldRenderer.Offset + _transform.ToVec2();
+            }
 
             _spriteSheet?.DrawSprite(
                 spritePosition.x + _animations[_currentAnimation].OffsetX,
@@ -147,7 +153,6 @@ namespace PmdThing.Components
                 _columnIndex,
                 false
                 );
-
         }
 
         public void Animation_FixedUpdate()

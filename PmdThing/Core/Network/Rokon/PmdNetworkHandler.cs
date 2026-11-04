@@ -38,8 +38,8 @@ namespace PmdThing.Core.Network.Rokon
                 var fieldValue = field.GetValue(component);
 
                 if (fieldValue == null) continue;
-                if (!PmdTypeUtils.IsGenericClass(field.FieldType, typeof(PmdListenableValue<>))) continue;
-                if (!field.IsDefined(syncAttribute)) continue;
+                if (!PmdTypeUtils.IsGenericClass(field.FieldType, typeof(PmdServerValue<>))) continue;
+                //if (!field.IsDefined(syncAttribute)) continue;
 
                 var packetDto = new PacketDto
                 {
@@ -69,7 +69,7 @@ namespace PmdThing.Core.Network.Rokon
                 if (!componentType.IsDefined(syncAttribute)) return;
                 var syncAttribInstance = Attribute.GetCustomAttribute(componentType, typeof(PmdServerSync)) as PmdServerSync;
                 
-                if (!syncAttribInstance?.UpdateValue == false) return;
+                if (syncAttribInstance?.UpdateValue == false) return;
 
                 var packetDto = new PacketDto
                 {

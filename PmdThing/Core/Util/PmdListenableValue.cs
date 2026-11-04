@@ -17,15 +17,15 @@
 
         private bool _hasChanged;
 
-        public PmdListenableValue(PmdComponent component, T initialData, string? tag = null, ProcessingOrder order = ProcessingOrder.Update)
+        public PmdListenableValue(PmdComponent component, T initialData, ProcessingOrder order = ProcessingOrder.Update, bool raiseChanged = true)
         {
             _parent = component;
             _processingOrder = order;
             _data = initialData;
-            SetChanged(true, initialData);
+            SetChanged(raiseChanged, initialData);
         }
 
-        public void Set(T newData)
+        public virtual void Set(T newData)
         {
             if (!Equals(_data, newData)) SetChanged(true, newData);
         }
@@ -33,7 +33,10 @@
         public void SetChanged(bool changed, T newValue)
         {
             _hasChanged = changed;
-            _parent.SubmitTask(() => Changed?.Invoke(newValue, _data), _processingOrder);
+            if (_hasChanged)
+            {
+                _parent.SubmitTask(() => Changed?.Invoke(newValue, _data), _processingOrder);
+            }
             _data = newValue;
         }
 

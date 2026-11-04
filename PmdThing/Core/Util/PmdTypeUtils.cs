@@ -7,16 +7,17 @@ namespace PmdThing.Core.Util
 
         public static bool IsGenericClass(Type type, Type genericType)
         {
+            var result = false;
             if (type.BaseType?.IsGenericType == true)
             {
-                return type.BaseType?.GetGenericTypeDefinition() == genericType;
+                result =  type.BaseType?.GetGenericTypeDefinition() == genericType;
             }
             if (type.IsGenericType)
             {
-                return type.GetGenericTypeDefinition() == genericType;
+                result = type.GetGenericTypeDefinition() == genericType;
             }
 
-            return false;
+            return result;
         }
 
         // TODO: kinda slow... type cache?

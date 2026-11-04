@@ -45,24 +45,28 @@ namespace PmdThing.Containers
                 0
             );
 
-            RegisterIfNotExist<Collision>(false, out var collision, _tiledTransform);
-            collision.RegisterTransform(_tiledTransform);
+            
 
             if (!capabilities.Headless)
             {
                 RegisterComponent<SpriteRenderer>(true, out var pokemonRenderer, _pokemon);
                 _renderer = pokemonRenderer;
             }
+            else
+            {
+                RegisterIfNotExist<Collision>(false, out var collision, _tiledTransform);
+                collision.RegisterTransform(_tiledTransform);
+                collision.CollisionChange += PokemonCollisionChange;
+            }
 
             if (_player)
             {
-                GetIfExists<Camera>(false)
-                    ?.SetTarget(this);
+                GetIfExists<Camera>(false)?
+                    .SetTarget(this);
                 RegisterComponent<TiledInput>(true);
             }
 
-
-            collision.OnCollision += Pokemon_OnCollision;
+           
             _tiledTransform.Moving.Changed += Moving_Changed;
             _tiledTransform.Direction.Changed += Direction_Changed;
 
@@ -70,7 +74,7 @@ namespace PmdThing.Containers
 
         }
 
-        private void Pokemon_OnCollision(bool colliding, PmdTileRef tile)
+        private void PokemonCollisionChange(bool colliding, PmdTileRef tile)
         {
             
             if (!_player && colliding && tile == _tiledTransform.ComponentValue)
