@@ -124,10 +124,17 @@ namespace PmdThing.Components
 
         }
 
-        public void DrawSprite(RectangleF sourceRect, RectangleF destRect)
+        public void DrawSprite(RectangleF sourceRect, RectangleF destRect, bool centered = false)
         {
             destRect.Width *= SpriteScale;
             destRect.Height *= SpriteScale;
+
+            if (centered)
+            {
+                destRect.X += (float)GetSpriteWidth() / 2;
+                destRect.Y += (float)GetSpriteHeight() / 2;
+            }
+
             _spriteSheetImage.Draw(destRect, sourceRect, false);
         }
 

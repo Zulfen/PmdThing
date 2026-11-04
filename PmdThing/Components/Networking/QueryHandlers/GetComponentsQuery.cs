@@ -1,4 +1,5 @@
-﻿using PmdThing.Core;
+﻿using Microsoft.Extensions.Logging;
+using PmdThing.Core;
 using PmdThing.Core.Network;
 using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
@@ -14,6 +15,7 @@ namespace PmdThing.Components.Networking.QueryHandlers
             if (Server == null) return null;
             connection.SignalReady();
 
+            var count = 0;
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator(it looks ugly...)
             foreach (var componentEntry in Server.GetSyncComponents())
             {
@@ -42,8 +44,11 @@ namespace PmdThing.Components.Networking.QueryHandlers
                     };
 
                     connection.SendPacket(packet);
+                    count++;
                 }
             }
+
+            Framework.Logger.LogDebug("Sent {count} components.", count);
 
             return null;
         }

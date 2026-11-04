@@ -8,47 +8,49 @@ namespace PmdThing.Components
     public class PlayerCollision : PmdComponent
     {
 
-        public record CollisionEventArgs(bool Collided, PmdTileRef Tile);
+        public record CollisionEventArgs(PmdTileRef Tile);
 
         private readonly TiledWorld _world;
 
+        private TiledTransform _transform;
         private readonly List<TiledTransform> _otherTiles = [];
 
-        public event EventHandler<PmdContainer?, CollisionEventArgs>? CollisionChange;
+        public event EventHandler<PmdContainer?, CollisionEventArgs>? CollisionCheck;
 
         public PlayerCollision(PmdComponentConfig config, TiledTransform tiledTransform) : base(config)
         {
-            tiledTransform.Destination.Changed += Destination_Changed;
+            _transform = tiledTransform;
+            _transform.DestinationChanged += Destination_Changed;
             _world = GetBaseContainer<TiledWorld>();
         }
 
-        private async void Destination_Changed(PmdTileRef current, PmdTileRef previous)
+        private async Task Destination_Changed(PmdContainer? sender, TiledTransform.DestinationEventArgs e)
         {
-            try
-            {
-                var worldColliding = await _world.TileProvider.CollisionCheck(current.Row, current.Column);
-                var transformsColliding = false;
 
-                PmdContainer? collidingContainer = null;
-                foreach (var transform in _otherTiles)
+            var worldColliding = await _world.TileProvider.CollisionCheck(e.Tile.Row, e.Tile.Column);
+            var transformsColliding = false;
+
+            PmdContainer? collidingContainer = null;
+            foreach (var transform in _otherTiles)
+            {
+                transformsColliding = e.Tile == transform.ComponentValue;
+                if (transformsColliding)
                 {
-                    transformsColliding = current == transform.ComponentValue;
-                    if (transformsColliding)
-                    {
-                        collidingContainer = transform.GetParent();
-                        break;
-                    }
+                    collidingContainer = transform.GetParent();
+                    break;
                 }
-
-                var collided = worldColliding || transformsColliding;
-                CollisionChange?.Invoke(worldColliding ? _world : collidingContainer, new CollisionEventArgs(collided, current));
             }
-            catch (Exception)
+
+            var collided = worldColliding || transformsColliding;
+            if (collided)
             {
-                // ignored
-            }
-        }
+                CollisionCheck?.Invoke(worldColliding ? _world : collidingContainer,
+                    new CollisionEventArgs(e.Tile));
 
+                e.ShouldMove = false;
+            }
+
+        }
         public void RegisterTransform(TiledTransform transform)
         {
             _otherTiles.Add(transform);

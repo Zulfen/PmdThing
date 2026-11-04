@@ -10,40 +10,40 @@ namespace PmdThing.Core.Util
         private readonly Map _tmxMap;
 
         private TileLayer _tileLayer;
-        private string _visualLayer = string.Empty;
+
         public string VisualLayer
         {
-            get => _visualLayer;
+            get;
             set
             {
-                _visualLayer = value;
-                _tileLayer = GetTileLayer(_visualLayer);
+                field = value;
+                _tileLayer = GetTileLayer(field);
             }
-        }
+        } = string.Empty;
 
         private ObjectLayer _objectLayer;
-        private string _collisionLayer = string.Empty;
+
         public string CollisionLayer
         {
-            get => _collisionLayer;
+            get;
             set
             {
-                _collisionLayer = value;
-                _objectLayer = GetObjectLayer(_collisionLayer);
+                field = value;
+                _objectLayer = GetObjectLayer(field);
             }
-        }
+        } = string.Empty;
 
         private Tileset _tileset;
-        private string _tileSetName = string.Empty;
+
         public string TilesetName
         {
-            get => _tileSetName;
+            get;
             set
             {
-                _tileSetName = value;
-                _tileset = GetTileset(_tileSetName);
+                field = value;
+                _tileset = GetTileset(field);
             }
-        }
+        } = string.Empty;
 
         public TmxTileProvider
         (
@@ -99,9 +99,10 @@ namespace PmdThing.Core.Util
                 Height = _tmxMap.TileHeight
             };
 
+            // ReSharper disable once LoopCanBeConvertedToQuery
             foreach (var collisionRect in _objectLayer.Objects.OfType<RectangleObject>())
             {
-                var mapRect = new RectangleF()
+                var mapRect = new RectangleF
                 {
                     X = collisionRect.X,
                     Y = collisionRect.Y,
@@ -109,7 +110,10 @@ namespace PmdThing.Core.Util
                     Height = (int)collisionRect.Height,
                 };
 
-                if (posRect.IntersectsWith(mapRect)) return Task.FromResult(true);
+                if (posRect.IntersectsWith(mapRect))
+                {
+                    return Task.FromResult(true);
+                }
             }
 
             return Task.FromResult(false);

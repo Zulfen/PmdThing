@@ -11,17 +11,19 @@
 
         private readonly PmdComponent _parent;
         private readonly ProcessingOrder _processingOrder;
+        private readonly bool _async;
 
         private T _data;
         public event Action<T, T>? Changed;
 
         private bool _hasChanged;
 
-        public PmdListenableValue(PmdComponent component, T initialData, ProcessingOrder order = ProcessingOrder.Update, bool raiseChanged = true)
+        public PmdListenableValue(PmdComponent component, T initialData, ProcessingOrder order = ProcessingOrder.Update, bool raiseChanged = true, bool async = false)
         {
             _parent = component;
             _processingOrder = order;
             _data = initialData;
+            _async = async;
             SetChanged(raiseChanged, initialData);
         }
 
@@ -35,7 +37,15 @@
             _hasChanged = changed;
             if (_hasChanged)
             {
-                _parent.SubmitTask(() => Changed?.Invoke(newValue, _data), _processingOrder);
+                void FireEvent() => Changed?.Invoke(newValue, _data);
+                if (_async)
+                {
+                    FireEvent();
+                }
+                else
+                {
+                    _parent.SubmitTask(FireEvent, _processingOrder);
+                }
             }
             _data = newValue;
         }

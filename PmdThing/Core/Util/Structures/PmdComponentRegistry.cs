@@ -69,9 +69,21 @@ namespace PmdThing.Core.Util.Structures
 
         public List<PmdComponentId> GetAll(Type componentType)
         {
-            return _typeMap.TryGetValue(componentType, out var ints)
-                ? ints
-                : throw new ArgumentException($"Component type {componentType.Name} has not been registered");
+            //return _typeMap.TryGetValue(componentType, out var ints)
+            //    ? ints
+            //    : throw new ArgumentException($"Component type {componentType.Name} has not been registered");
+
+            if (_typeMap.TryGetValue(componentType, out var ints))
+            {
+                return ints;
+            }
+
+            var subclasses = _typeMap
+                .Where(entry => entry.Key.IsSubclassOf(componentType))
+                .SelectMany(entry => entry.Value)
+                .ToList();
+
+            return subclasses.Count == 0 ? throw new ArgumentException($"Component type {componentType.Name} has not been registered") : subclasses;
         }
 
 

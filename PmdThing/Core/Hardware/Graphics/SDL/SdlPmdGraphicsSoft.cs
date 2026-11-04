@@ -37,10 +37,10 @@ namespace PmdThing.Core.Hardware.Graphics.SDL
 
         public override PmdImage LoadImage(PmdComponent parent, string path)
         {
-            return CreateImage(parent, path);
+            return CreateSdlImage(parent, path);
         }
 
-        protected override SdlPmdImage CreateImage(PmdComponent parent, string path)
+        protected override SdlPmdImage CreateSdlImage(PmdComponent parent, string path)
         {
             parent.Register<SdlPmdImageSoft>(true, out var image, path, *_renderer);
             return image;

@@ -6,6 +6,7 @@ using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core.Network.Rokon
 {
+
     public abstract class PmdNetworkHandler(PmdContainerConfig config, Type syncAttribute, PmdPacketSource packetSource) : PmdContainer(config)
     {
 
@@ -33,7 +34,7 @@ namespace PmdThing.Core.Network.Rokon
             var componentType = component.GetType();
 
             // listenable values
-            foreach (var field in componentType.GetFields())
+            foreach (var field in componentType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public))
             {
                 var fieldValue = field.GetValue(component);
 
@@ -105,12 +106,17 @@ namespace PmdThing.Core.Network.Rokon
             return _idTags[id]?.Tag;
         }
 
+        /// <summary>
+        /// When a listenable field / component changes.
+        /// </summary>
+        /// <param name="current">Current value</param>
+        /// <param name="previous">Previous value</param>
+        /// <param name="packetDto">Built packet to send</param>
         public abstract void ListenableValueChanged(dynamic current, dynamic previous, PacketDto packetDto);
 
         private void SubscribeEvent(EventInfo info, PacketDto packetDto, object target)
         {
-            var genericHandler = typeof(ListenableHandler<>);
-            var dataHandler = genericHandler.MakeGenericType(packetDto.DataType!);
+            var dataHandler = typeof(ListenableHandler<>).MakeGenericType(packetDto.DataType!);
 
             var handlerMethod = dataHandler.GetMethod("Changed", BindingFlags.Public | BindingFlags.Instance);
 

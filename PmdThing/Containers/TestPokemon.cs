@@ -58,7 +58,7 @@ namespace PmdThing.Containers
                 RegisterComponent<TiledInput>(true);
 
                 RegisterComponent<PlayerCollision>(false, out var collision, _tiledTransform);
-                collision.CollisionChange += PlayerCollision_Changed;
+                collision.CollisionCheck += PlayerCollision_Changed;
             }
             else
             {
@@ -66,7 +66,7 @@ namespace PmdThing.Containers
                 collision?.RegisterTransform(_tiledTransform);
             }
 
-           
+
             _tiledTransform.Moving.Changed += Moving_Changed;
             _tiledTransform.Direction.Changed += Direction_Changed;
 
@@ -76,17 +76,13 @@ namespace PmdThing.Containers
 
         private void PlayerCollision_Changed(PmdContainer? sender, PlayerCollision.CollisionEventArgs e)
         {
-            if (e.Collided && sender is TestPokemon otherPokemon)
+            if (sender is TestPokemon otherPokemon)
             {
                 Framework.Logger.LogDebug("Collision detected with {pokemon} and {otherPokemon} at x={column}, y={row}",
                     Type, otherPokemon.Type, e.Tile.Column, e.Tile.Row);
 
                 var pokemonTransform = otherPokemon.GetComponent<TiledTransform>();
                 pokemonTransform.MoveInDirection(AnimationDirection.South);
-            }
-            else
-            {
-                _tiledTransform.CanMove.Set(!e.Collided);
             }
         }
 

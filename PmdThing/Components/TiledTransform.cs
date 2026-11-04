@@ -1,4 +1,5 @@
-﻿using PmdThing.Containers;
+﻿using System.Diagnostics;
+using PmdThing.Containers;
 using PmdThing.Core;
 using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
@@ -8,10 +9,18 @@ namespace PmdThing.Components
     [PmdServerSync]
     public class TiledTransform : PmdListenableComponent<PmdTileRef>
     {
+        public class DestinationEventArgs(PmdTileRef tile)
+        {
+            public PmdTileRef Tile { get; set; } = tile;
+            public bool ShouldMove { get; set; } = true;
+        }
 
         private readonly Timer _timer;
 
-        public PmdServerValue<PmdTileRef> Destination;
+        private readonly PmdServerValue<PmdTileRef> _destination;
+
+        public delegate Task AsyncDestinationChanged(PmdContainer? sender, DestinationEventArgs e);
+        public event AsyncDestinationChanged? DestinationChanged;
 
         public PmdServerValue<PmdConstants.AnimationDirection> Direction;
 
@@ -30,7 +39,7 @@ namespace PmdThing.Components
 
         public TiledTransform(PmdComponentConfig config, int column, int row) : base(config, new PmdTileRef(row, column))
         {
-            Destination = new PmdServerValue<PmdTileRef>(this, new PmdTileRef(0, 0));
+            _destination = new PmdServerValue<PmdTileRef>(this, new PmdTileRef(0, 0), ProcessingOrder.Update, true, true);
             CanMove = new PmdServerValue<bool>(this, true);
             Moving = new PmdServerValue<bool>(this, false);
             Speed = new PmdServerValue<float>(this, 2f);
@@ -44,6 +53,32 @@ namespace PmdThing.Components
             _world = GetBaseContainer<TiledWorld>();
             _timer = GetSharedComponent<Timer>();
 
+            _destination.Changed += InternalDestination_Changed;
+
+        }
+
+        private async void InternalDestination_Changed(PmdTileRef current, PmdTileRef previous)
+        {
+            try
+            {
+                var eventArgs = new DestinationEventArgs(current);
+
+                if (DestinationChanged != null)
+                {
+                    await DestinationChanged(GetParent(), eventArgs);
+
+                    //Debugger.Break();
+
+                    if (eventArgs.ShouldMove)
+                    {
+                        MoveTo(eventArgs.Tile);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
         }
 
         public void FaceTowards(PmdTileRef tile)
@@ -53,26 +88,42 @@ namespace PmdThing.Components
             Direction.Set(animationDirection);
         }
 
-        public void MoveTo(PmdTileRef tile, float speed = 2f)
+        /// <summary>
+        /// Request for a tile to be walked to.
+        /// </summary>
+        /// <param name="tile"></param>
+        public void SetDestination(PmdTileRef tile)
         {
             FaceTowards(tile);
-            Moving.Set(CanMove.Get());
+            _destination.Set(tile);
+        }
+
+        /// <summary>
+        /// NOTE: doesn't take collision into account
+        /// </summary>
+        /// <param name="tile">Tile to move to</param>
+        /// <param name="speed">Speed at which to do so</param>
+        private void MoveTo(PmdTileRef tile, float speed = 2f)
+        {
 
             Speed.Set(speed);
-            Destination.Set(tile);
+            Moving.Set(CanMove.Get());
+
+            var destinationVector = _world
+                .GetWorldSpace(tile)
+                .ToVec2();
 
             // this sucks mega balls 
-            var timerId = Register<Timer>(true, out var timer, 33.3f, ProcessingOrder.Update);
+            var timerId = Register<Timer>(true, out var timer, 50f, ProcessingOrder.Update);
             timer.RegisterTask(() =>
             {
                 var pointVector = _transform.ToVec2();
-                var distanceVector = _world.GetWorldSpace(tile).ToVec2() - pointVector;
+                var distanceVector = destinationVector - pointVector;
                 var step = Speed.Get(); //* Framework.Graphics.GetDelta();
 
                 if (distanceVector.Length <= step)
                 {
                     SetValue(tile);
-                    Destination.Set(tile);
                 }
 
                 if (CanMove.Get() && distanceVector.Length > 0)
@@ -92,7 +143,7 @@ namespace PmdThing.Components
         {
             var animationDirection = PmdConstants.DirectionToVec2(direction);
             var newTile = PmdConstants.Vec2ToTile(ComponentValue.ToVec2() + animationDirection);
-            MoveTo(newTile);
+            SetDestination(newTile);
         }
 
         protected override void SetValue(PmdTileRef tile)

@@ -1,17 +1,16 @@
-﻿using Microsoft.Extensions.Logging;
-using OpenTK.Graphics.OpenGL;
+﻿using OpenTK.Graphics.OpenGL;
 using SDL;
 using System.Drawing;
 using static SDL.SDL3;
 
 namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
 {
-    public unsafe class SdlPmdTextureAtlasGl : PmdTextureAtlas<SdlPmdImage>
+    public unsafe class SdlPmdTextureAtlasGl(PmdComponentConfig config) : PmdTextureAtlas<SdlPmdImage>(config)
     {
         private const int MaxWidth = 2048;
         private const int MaxHeight = 2048;
 
-        public class AtlasEntry
+        public class SubAtlasEntry
         {
             public Point LatestPoint;
             public SdlPmdImage? LatestImage;
@@ -23,12 +22,8 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
             public SDL_Surface* Surface = SDL_CreateSurface(MaxWidth, MaxHeight, SDL_PixelFormat.SDL_PIXELFORMAT_ABGR8888);
         }
 
-        private readonly Dictionary<SdlPmdImage, AtlasEntry> _imageAtlas = [];
-        private AtlasEntry _currentAtlas = new();
-
-        public SdlPmdTextureAtlasGl(PmdComponentConfig config) : base(config)
-        {
-        }
+        private readonly Dictionary<SdlPmdImage, SubAtlasEntry> _imageAtlasTracker = [];
+        private SubAtlasEntry _currentSubAtlas = new();
 
         public override Point AddTexture(SdlPmdImage image)
         {
@@ -36,24 +31,29 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
 
             Point finalPosition = new();
 
+            // Below is a sort of dynamic (ladder?) stitch I wrote by hand.
+            // It seems to work fine when there's a handful of sprites, but I have seen it blow up when there's tons.
+            // 2048x2048 seems the best size for the PMD sprites atm
+            // TODO: revisit this
+
             var addFailed = true;
             while (addFailed)
             {
-                var penX = _currentAtlas.LatestPoint.X;
-                if (_currentAtlas.LatestImage != null)
+                var penX = _currentSubAtlas.LatestPoint.X;
+                if (_currentSubAtlas.LatestImage != null)
                 {
-                    var width = _currentAtlas.LatestImage.GetWidth();
+                    var width = _currentSubAtlas.LatestImage.GetWidth();
                     penX += width;
                 }
 
-                _currentAtlas.RowHeights.Add(image.GetHeight());
+                _currentSubAtlas.RowHeights.Add(image.GetHeight());
 
                 var nextX = penX + image.GetWidth();
-                var nextY = _currentAtlas.LatestPoint.Y + _currentAtlas.RowHeights.Max() + image.GetHeight();
+                var nextY = _currentSubAtlas.LatestPoint.Y + _currentSubAtlas.RowHeights.Max() + image.GetHeight();
 
                 if (nextX >= MaxWidth)
                 {
-                    if (_currentAtlas.LatestPoint is { Y: 0, X: 0 })
+                    if (_currentSubAtlas.LatestPoint is { Y: 0, X: 0 })
                     {
                         finalPosition.Y = 0;
                         finalPosition.X = 0;
@@ -61,21 +61,21 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
                     else
                     {
                         finalPosition.X = 0;
-                        finalPosition.Y = _currentAtlas.LatestPoint.Y + _currentAtlas.RowHeights.Max();
+                        finalPosition.Y = _currentSubAtlas.LatestPoint.Y + _currentSubAtlas.RowHeights.Max();
                         
                     }
 
-                    _currentAtlas.RowHeights.Clear();
+                    _currentSubAtlas.RowHeights.Clear();
                 }
                 else 
                 {
                     finalPosition.X = penX;
-                    finalPosition.Y = _currentAtlas.LatestPoint.Y;
+                    finalPosition.Y = _currentSubAtlas.LatestPoint.Y;
                 }
 
-                if (nextY > MaxHeight && _currentAtlas.LatestPoint.Y > 0)
+                if (nextY > MaxHeight && _currentSubAtlas.LatestPoint.Y > 0)
                 {
-                    _currentAtlas = new AtlasEntry();
+                    _currentSubAtlas = new SubAtlasEntry();
                 }
                 else
                 {
@@ -87,39 +87,42 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
             SDL_Rect destRect;
             destRect.x = finalPosition.X;
             destRect.y = finalPosition.Y;
-            SDL_BlitSurface(image.LoadBuffer, null, _currentAtlas.Surface, &destRect);
+            SDL_BlitSurface(image.LoadBuffer, null, _currentSubAtlas.Surface, &destRect);
             // hmm. don't see any reason to use the pixels after. might change my mind
             SDL_DestroySurface(image.LoadBuffer);
 
-
-            AddAtlasEntry(image, finalPosition);
-            _imageAtlas.Add(image, _currentAtlas);
+            AddToCurrentAtlas(image, finalPosition);
+            _imageAtlasTracker.Add(image, _currentSubAtlas);
 
             return finalPosition;
         }
 
-        private void AddAtlasEntry(SdlPmdImage image, Point topLeft)
+        private void AddToCurrentAtlas(SdlPmdImage image, Point topLeft)
         {
-            _currentAtlas.TextureLocations.Add(image, topLeft);
-            _currentAtlas.LatestImage = image;
-            _currentAtlas.LatestPoint = topLeft;
+            _currentSubAtlas.TextureLocations.Add(image, topLeft);
+            _currentSubAtlas.LatestImage = image;
+            _currentSubAtlas.LatestPoint = topLeft;
         }
 
+        /// <summary>
+        /// Adds the current sub-atlas to the large shared atlas.
+        /// </summary>
         public override void Stitch()
         {
             var tempAtlas = SDL_CreateSurface
             (
-                _currentAtlas.Surface->w,
-                _currentAtlas.Surface->h,
+                _currentSubAtlas.Surface->w,
+                _currentSubAtlas.Surface->h,
                 SDL_PixelFormat.SDL_PIXELFORMAT_ABGR8888
             );
 
-            SDL_BlitSurface(_currentAtlas.Surface, null, tempAtlas, null);
+            SDL_BlitSurface(_currentSubAtlas.Surface, null, tempAtlas, null);
             SDL_FlipSurface(tempAtlas, SDL_FlipMode.SDL_FLIP_VERTICAL);
-                
-            SDL_SaveBMP(tempAtlas, $"atlas{_currentAtlas.TextureId}.bmp");
+            
+            // debug
+            SDL_SaveBMP(tempAtlas, $"atlas{_currentSubAtlas.TextureId}.bmp");
 
-            GL.BindTexture(TextureTarget.Texture2D, _currentAtlas.TextureId);
+            GL.BindTexture(TextureTarget.Texture2D, _currentSubAtlas.TextureId);
 
             SDL_LockSurface(tempAtlas);
 
@@ -148,7 +151,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
 
         public override void RemoveTexture(SdlPmdImage image)
         {
-            // TODO
+            // TODO: lol
             throw new NotImplementedException();
         }
 
@@ -159,19 +162,19 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
 
         public override void Use(SdlPmdImage image)
         {
-            var underlyingAtlas = _imageAtlas[image].TextureId;
+            var underlyingAtlas = _imageAtlasTracker[image].TextureId;
             GL.BindTexture(TextureTarget.Texture2D, underlyingAtlas);
         }
 
         public override int GetAtlasWidth(SdlPmdImage image)
         {
-            var underlyingAtlas = _imageAtlas[image].Surface;
+            var underlyingAtlas = _imageAtlasTracker[image].Surface;
             return underlyingAtlas->w;
         }
 
         public override int GetAtlasHeight(SdlPmdImage image)
         {
-            var underlyingAtlas = _imageAtlas[image].Surface;
+            var underlyingAtlas = _imageAtlasTracker[image].Surface;
             return underlyingAtlas->h;
         }
 

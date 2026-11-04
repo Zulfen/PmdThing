@@ -103,7 +103,6 @@ namespace PmdThing.Components.Graphics.OpenGL
                 throw new ArgumentException($"GLSL fragment shader failed to compile: {compileLog}");
             }
 
-
             GL.AttachShader(ProgramId, vertexId);
             GL.AttachShader(ProgramId, fragId);
 

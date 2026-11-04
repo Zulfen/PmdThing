@@ -8,7 +8,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL
 {
     public abstract unsafe class SdlPmdImage : PmdImage
     {
-        public SDL_Surface* LoadBuffer { get; protected set; }
+        public required SDL_Surface* LoadBuffer { get; init; }
         private readonly int _width;
         private readonly int _height;
 

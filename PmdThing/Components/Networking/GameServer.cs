@@ -105,24 +105,6 @@ namespace PmdThing.Components.Networking
                     }
                 }
 
-                // debug
-                Base.SubmitTask(() =>
-                {
-                    Base.RegisterContainer<TestPokemon>(out var nine, PmdConstants.Pokemon.Ninetales, false);
-
-                    var nineTile = nine.GetComponent<TiledTransform>();
-                    nineTile.MoveTo(new PmdTileRef(3, 3));
-
-                    Base.RegisterContainer<TestPokemon>(out var zorua, PmdConstants.Pokemon.Zorua, false);
-
-                    var zoruaTile = zorua.GetComponent<TiledTransform>();
-                    zoruaTile.MoveTo(new PmdTileRef(2, 1));
-
-                    Base.RegisterContainer<TestPokemon>(out var eevee, PmdConstants.Pokemon.Eevee, false);
-
-                    var eeveeTile = eevee.GetComponent<TiledTransform>();
-                    eeveeTile.MoveTo(new PmdTileRef(3, 10));
-                });
             }
         }
 
@@ -198,7 +180,7 @@ namespace PmdThing.Components.Networking
                 };
             }
 
-            Framework.Logger.LogDebug("Sending query response ({type}) to [{addr}]", packetDto.DataType, connection.GetEndpoint());
+            //Framework.Logger.LogDebug("Sending query response ({type}) to [{addr}]", packetDto.DataType, connection.GetEndpoint());
 
             SendPacket(packetDto, connection);
         }
@@ -223,46 +205,6 @@ namespace PmdThing.Components.Networking
                         {
                             switch (packet.PmdPacketType)
                             {
-                                case PmdPacketType.UpdateComponent:
-
-                                    if (PmdTypeUtils.IsGenericClass(packet.Type, typeof(PmdListenableComponent<>)))
-                                    {
-                                        if (packet.Attribute == null || packet.Parent == null)
-                                        {
-                                            connection.Cleanup();
-                                            continue;
-                                        }
-
-                                        Base.SubmitTask(() => UpdateListenableComponent(packet.Parent.Value, packet.Attribute!, packet.Data![0]));
-                                    }
-
-                                    break;
-
-                                case PmdPacketType.AddComponent:
-
-                                    if (packet.Type.IsSubclassOf(typeof(PmdComponent)))
-                                    {
-                                        if (packet.Parent.HasValue)
-                                        {
-                                            var parentContainer = Base.GetContainer(packet.Parent.Value);
-                                            Base.SubmitTask(() => parentContainer.RegisterComponent(packet.Id, packet.Type, packet.Unique, packet.Data!));
-                                        }
-                                        else
-                                        {
-                                            Base.SubmitTask(() => RegisterComponent(packet.Id, packet.Type, packet.Unique, packet.Data!));
-                                        }
-                                    }
-
-                                    break;
-
-                                case PmdPacketType.RemoveComponent:
-
-                                    if (packet.Type.IsSubclassOf(typeof(PmdComponent)))
-                                    {
-                                        Base.SubmitTask(() => Base.DeregisterComponent(packet.Type, packet.Id, packet.Unique));
-                                    }
-
-                                    break;
 
                                 case PmdPacketType.Query:
 
@@ -285,6 +227,9 @@ namespace PmdThing.Components.Networking
 
                                     break;
 
+                                case PmdPacketType.AddComponent:
+                                case PmdPacketType.RemoveComponent:
+                                case PmdPacketType.UpdateComponent:
                                 case PmdPacketType.UpdateValue: 
                                 case PmdPacketType.AddContainer:
                                 case PmdPacketType.DeleteContainer:

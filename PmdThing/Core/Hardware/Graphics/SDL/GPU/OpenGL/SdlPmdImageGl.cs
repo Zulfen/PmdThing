@@ -42,9 +42,10 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
             }
 
             var converted = SDL_ConvertSurface(LoadBuffer, SDL_PixelFormat.SDL_PIXELFORMAT_ABGR8888);
-
+            SDL_DestroySurface(LoadBuffer);
             LoadBuffer = converted;
 
+            // Where this image is in the big shared atlas
             _atlasTopLeft = _atlas.AddTexture(this);
             _atlas.Stitch();
         }
@@ -89,6 +90,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
                 .GetMainWindow()
                 .GetHeight();
 
+            // TODO: maybe cache these and only update on window resize
             var projectionMatrix = mat4.Ortho(0, windowWidth, windowHeight, 0, -1, 1);
             // the transformations applied to the base square
             var modelMatrix = mat4.Translate(destRect.X, destRect.Y, 0) * mat4.Scale(destRect.Width, destRect.Height, 1);

@@ -1,5 +1,4 @@
 ﻿using System.Drawing;
-using PmdThing.Core.Util;
 
 namespace PmdThing.Core.Hardware.Graphics
 {

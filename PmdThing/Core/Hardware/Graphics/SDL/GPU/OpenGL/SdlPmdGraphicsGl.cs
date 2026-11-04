@@ -68,7 +68,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
             return MainWindow;
         }
 
-        protected override SdlPmdImage CreateImage(PmdComponent parent, string path)
+        protected override SdlPmdImage CreateSdlImage(PmdComponent parent, string path)
         {
             parent.RegisterIfNotExist<SdlPmdTextureAtlasGl>(false, out _);
             parent.Register<SdlPmdImageGl>(true, out var glImage, path);
