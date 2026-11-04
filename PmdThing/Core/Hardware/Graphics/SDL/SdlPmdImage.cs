@@ -1,48 +1,40 @@
-﻿using SDL;
+﻿using System.Drawing;
+using Microsoft.Extensions.Logging;
+using SDL;
 using static SDL.SDL3;
 using static SDL.SDL3_image;
 
 namespace PmdThing.Core.Hardware.Graphics.SDL
 {
-    public unsafe class SdlPmdImage(string path, SDL_Renderer* renderer) : PmdImage
+    public abstract unsafe class SdlPmdImage : PmdImage
     {
-        private SDL_Texture* _texture;
-        private bool _destroyed;
-
+        public SDL_Surface* LoadBuffer { get; protected set; }
         private int _width;
         private int _height;
 
-        public override void Draw(PmdRect destRect, PmdRect? fromRect, bool centered)
+        private bool _destroyed;
+
+        protected SdlPmdImage(PmdComponentConfig config, string path) : base(config)
         {
+            Framework.Logger.LogDebug("Loading image at path: ({path})..", path);
+            LoadBuffer = IMG_Load((Utf8String)path);
 
-            var displayX = centered ? destRect.X + (float) destRect.Width / 2 : destRect.X;
-            var displayY = centered ? destRect.Y + (float) destRect.Height / 2 : destRect.Y;
+            _width = LoadBuffer->w;
+            _height = LoadBuffer->h;
 
-            SDL_FRect sdlDest;
-            sdlDest.w = destRect.Width;
-            sdlDest.h = destRect.Height;
-            sdlDest.x = displayX;
-            sdlDest.y = displayY;
-
-            SDL_FRect sdlFrom;
-            if (fromRect == null)
+            if (LoadBuffer == null)
             {
-                sdlFrom.w = _width;
-                sdlFrom.h = _height;
-                sdlFrom.x = 0;
-                sdlFrom.y = 0;
+                throw new ArgumentException($"Unable to IMG_Load the image at: {path}\n{SDL_GetError()}");
             }
-            else
-            {
-                sdlFrom.w = fromRect.Width;
-                sdlFrom.h = fromRect.Height;
-                sdlFrom.x = fromRect.X;
-                sdlFrom.y = fromRect.Y;
-            }
-
-            SDL_RenderTexture(renderer, _texture, &sdlFrom, &sdlDest);
-
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="destRect"></param>
+        /// <param name="fromRect"></param>
+        /// <param name="centered"></param>
+        public abstract override void Draw(RectangleF destRect, RectangleF? fromRect, bool centered);
 
         public override int GetHeight()
         {
@@ -54,25 +46,6 @@ namespace PmdThing.Core.Hardware.Graphics.SDL
             return _width;
         }
 
-        public override bool Load()
-        {
-
-            // if already exists (hello sdl3 tutorials :3)
-            var loadedSurface = IMG_Load((Utf8String)path);
-            if (loadedSurface == null) throw new ArgumentException($"Unable to IMG_Load the image at: {path}\n{SDL_GetError()}");
-
-            _texture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
-            if (_texture == null) throw new ArgumentException($"Unable to create an SDL surface of the image at: {path}\n{SDL_GetError()}");
-            _width = loadedSurface->w;
-            _height = loadedSurface->h;
-
-            SDL_SetTextureScaleMode(_texture, SDL_ScaleMode.SDL_SCALEMODE_PIXELART);
-            SDL_DestroySurface(loadedSurface);
-
-            return true;
-
-        }
-
         public override void Resize(int width, int height)
         {
             throw new NotImplementedException();
@@ -80,8 +53,6 @@ namespace PmdThing.Core.Hardware.Graphics.SDL
 
         public override void Destroy()
         {
-            SDL_DestroyTexture(_texture);
-            _texture = null;
             _destroyed = true;
         }
 

@@ -1,48 +1,85 @@
-﻿using System.Diagnostics;
+﻿using DotTiled;
+using Microsoft.Extensions.Logging;
 using PmdThing.Components;
+using PmdThing.Components.Graphics.OpenGL;
 using PmdThing.Core;
 using PmdThing.Core.Util;
+using static PmdThing.Core.Util.PmdConstants;
+using DrawOrder = PmdThing.Components.Graphics.DrawOrder;
 
 namespace PmdThing.Containers
 {
     public class TestPokemon : PmdContainer
     {
 
-        public TestPokemon()
+        private readonly SpriteRenderer _renderer;
+        private readonly TiledTransform _tiledTransform;
+
+        private bool _player;
+        private Pokemon _pokemon;
+
+        public TestPokemon(Pokemon pokemon, bool player)
+        {
+            _player = player;
+            _pokemon = pokemon;
+
+            RegisterComponent<GlShader>(true, out var glShader,
+                @"C:\Users\Joshua Passmore\source\repos\PmdThing\PmdThing\\Core\Hardware\Graphics\Shaders\Vertex\shader.vert",
+                @"C:\Users\Joshua Passmore\source\repos\PmdThing\PmdThing\\Core\Hardware\Graphics\Shaders\Fragment\shader.frag",
+                "vertex");
+
+            RegisterComponent
+            (
+                true,
+                out _tiledTransform,
+                0,
+                0
+            );
+
+            RegisterIfNotExist<Collision>(false, out var collision, _tiledTransform);
+            collision.RegisterTransform(_tiledTransform);
+
+            RegisterComponent(true, out _renderer, _pokemon);
+            
+            if (_player)
+            {
+                GetIfExists<Camera>(false)
+                    ?.SetTarget(this);
+                RegisterComponent<TiledInput>(true);
+            }
+
+
+            collision.OnCollision += Pokemon_OnCollision;
+            _tiledTransform.Moving.Changed += Moving_Changed;
+            _tiledTransform.Direction.Changed += Direction_Changed;
+
+            Framework.Logger.LogInformation("Spawned Pokémon {pokemon}. Player: {player}", pokemon, player);
+
+        }
+
+        private void Pokemon_OnCollision(bool colliding, PmdTileRef tile)
         {
             
-            var window = Framework.Graphics.GetMainWindow();
-            List<int> frameDurations = [40, 12, 20, 12];
+            if (!_player && colliding && tile == _tiledTransform.ComponentValue)
+            {
+                Framework.Logger.LogDebug("Collision detected with {pokemon} at x={column}, y={row}", _pokemon, tile.Column, tile.Row);
+                _tiledTransform.MoveInDirection(AnimationDirection.South);
+            }
+            else
+            {
+                _tiledTransform.CanMove.Set(!colliding);
+            }
+            
+        }
 
-            RegisterComponent<Transform>
-            (
-                true,
-                0,
-                0
-            );
+        private void Direction_Changed(AnimationDirection newDirection, AnimationDirection prevDirection)
+        {
+            _renderer.SetAnimationDirection(newDirection);
+        }
 
-            //RegisterComponent<SpriteSheet>
-            //(
-            //    true,
-            //    @"C:\Users\Joshua Passmore\source\repos\PmdThing\PmdThing\Sprites\Vulpix\Idle-Anim.png",
-            //    32, 
-            //    32
-            //);
-
-            RegisterComponent<Animation>(true, PmdConstants.Pokemon.Vulpix);
-
-            //RegisterComponent<DebugDraw>(true);
-
-            RegisterComponent<TiledTransform>
-            (
-                true,
-                0,
-                0
-            );
-
-            RegisterComponent<KeyboardInput>(true);
-
-
+        private void Moving_Changed(bool currentValue, bool previousValue)
+        {
+            _renderer.CurrentAnimation = currentValue ? AnimationType.Walk : AnimationType.Idle;
         }
 
     }

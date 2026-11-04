@@ -6,12 +6,11 @@ using static SDL.SDL_EventType;
 
 namespace PmdThing.Core.Hardware.Framework.SDL
 {
-    public unsafe class SdlPmdFramework(SdlPmdGraphics graphics, SdlPmdKeyboard keyboard) : PmdFramework(graphics, keyboard)
+    public unsafe class SdlPmdFramework(SdlPmdGraphicsBase sdlGraphics, SdlPmdKeyboard keyboard) : PmdFramework(sdlGraphics, keyboard)
     {
 
         public override void Init()
         {
-            SDL_Init(SDL_InitFlags.SDL_INIT_VIDEO);
             Graphics
                 .GetMainWindow()
                 .Show();
@@ -37,6 +36,11 @@ namespace PmdThing.Core.Hardware.Framework.SDL
             // maybe check if it's key up or down here then handle it
             keyboard.Poll(&sdlEvent);
 
+        }
+
+        public override string ToString()
+        {
+            return "SDL";
         }
     }
 }

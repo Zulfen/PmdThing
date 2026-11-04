@@ -1,7 +1,7 @@
-﻿using System.Collections.Concurrent;
-using PmdThing.Components;
-using PmdThing.Core.Hardware.Framework;
+﻿using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util;
+using PmdThing.Core.Util.Structures;
+using System.Collections.Concurrent;
 using PmdComponentId = System.Int32;
 using PmdContainerId = System.Int32;
 
@@ -11,14 +11,13 @@ namespace PmdThing.Core
     public class PmdGameBase
     {
 
-
         private enum PmdComponentAction
         {
             Add,
             Remove
         }
 
-        private class PmdQueuedComponent
+        private record PmdQueuedComponent
         {
             public required PmdComponentAction Action { get; init; }
             public required PmdComponent Instance { get; init; }
@@ -32,7 +31,6 @@ namespace PmdThing.Core
         // MovementController?
 
         private PmdComponentId _componentCounter;
-        private PmdContainerId _containerCounter;
 
         private readonly PmdComponentRegistry _allComponents = new();
         private readonly PmdComponentRegistry _sharedComponents = new();
@@ -40,24 +38,22 @@ namespace PmdThing.Core
         private readonly Dictionary<PmdComponentId, PmdComponent> _runtimeComponents = new();
 
         private readonly ConcurrentQueue<PmdQueuedComponent> _componentActions = [];
-        private readonly List<PmdComponent> _processQueue = [];
+        private readonly List<PmdComponent> _processList = [];
 
-        private readonly Dictionary<PmdContainerId, PmdContainer> _runtimeContainers = new();
-
-        private PmdContainer? _sharedContainer;
+        public readonly PmdMultiContainer BaseContainer;
 
         public PmdGameBase(PmdFramework framework)
         {
             _instance = this;
             _framework = framework;
+
+            BaseContainer = new PmdMultiContainer();
             Init();
         }
 
         private void Init()
         {
-            RegisterContainer(out _sharedContainer);
-            RegisterComponent<TiledWorld>(_sharedContainer, false, out _, 24);
-            RegisterComponent<Components.Timer>(_sharedContainer, false, out _, (double)1000 / 30, ProcessingOrder.Update);
+            RegisterComponent<Components.Timer>(null, false, out _, (double)1000 / 30, ProcessingOrder.Update);
         }
 
         public static PmdGameBase Create(int width, int height, string title)
@@ -68,16 +64,18 @@ namespace PmdThing.Core
 
         public static PmdGameBase GetInstance()
         {
-            if (_instance == null) throw new ApplicationException("Could not get GameBase. Is it initialised?");
-            return _instance;
+            return _instance ?? throw new ApplicationException("Could not get GameBase. Is it initialised?");
         }
 
-        private PmdComponentId RegisterComponent(PmdComponent component, bool unique = true)
+        public PmdComponentId RegisterComponent(PmdComponent component, bool unique = true)
         {
             _componentCounter++;
-
+            
             _allComponents.Add(component.GetType(), _componentCounter);
-            if (!unique) _sharedComponents.Add(component.GetType(), _componentCounter);
+            if (!unique)
+            {
+                _sharedComponents.Add(component.GetType(), _componentCounter);
+            }
 
             var queuedComponent = new PmdQueuedComponent()
             {
@@ -87,8 +85,6 @@ namespace PmdThing.Core
             _componentActions.Enqueue(queuedComponent);
 
             _runtimeComponents.Add(_componentCounter, component);
-
-            component.Priority = _componentCounter;
 
             return _componentCounter;
         }
@@ -107,19 +103,13 @@ namespace PmdThing.Core
                                                             out TComponent instance,
                                                             params object[] arguments) where TComponent : PmdComponent
         {
-            var runtimeComponentFunc = GetRuntimeComponent;
-            var containerComponentFunc = GetContainerComponent;
-            var sharedComponentFunc = GetSharedComponent;
 
             var fullParams = new object[arguments.Length + 1];
             arguments.CopyTo(fullParams, 1);
 
             var componentConfig = new PmdComponentConfig
             {
-                OtherComponent = runtimeComponentFunc,
-                ContainerComponent = containerComponentFunc,
-                SharedComponent = sharedComponentFunc,
-                Parent = container,
+                Parent = container ?? BaseContainer,
             };
 
             fullParams[0] = componentConfig;
@@ -171,41 +161,40 @@ namespace PmdThing.Core
             return _sharedComponents.GetFirst(componentType);
         }
 
-        public PmdComponent? GetContainerComponent(Type componentType, PmdContainerId id)
+        public PmdComponent GetContainerComponent(Type componentType, PmdContainerId id)
         {
-            return _runtimeContainers.TryGetValue(id, out var container) ? container.GetComponent(componentType) : null;
+            return BaseContainer
+                .GetContainer(id)
+                .GetComponent(componentType);
         }
 
-        public PmdContainerId RegisterContainer<TContainer>(out TContainer? instance, params object[] arguments) where TContainer : PmdContainer
+        public PmdComponent GetContainerComponent(Type containerType, Type componentType)
         {
-
-            var containerInstance = Activator.CreateInstance(typeof(TContainer), arguments);
-            if (containerInstance is TContainer container)
-            {
-                instance = container;
-                _runtimeContainers[_containerCounter] = container;
-                _containerCounter++;
-                return _containerCounter;
-            }
-
-            throw new ArgumentException(
-                $"Container {typeof(TContainer)} could not be initialised with the following arguments: {arguments}");
-
+            return BaseContainer
+                .GetContainer(containerType)
+                .GetComponent(componentType);
         }
 
-        public bool HasComponent(Type componentType)
+        public PmdContainerId RegisterContainer<TContainer>(out TContainer instance, params object[]? arguments)
+            where TContainer : PmdContainer
+        {
+            return BaseContainer.RegisterContainer(out instance, arguments);
+        }
+
+        public TContainer GetContainer<TContainer>(PmdContainerId id) where TContainer : PmdContainer
+        {
+            return BaseContainer.GetContainer<TContainer>(id);
+        }
+
+        public TContainer GetFirstContainer<TContainer>() where TContainer : PmdContainer
+        {
+            BaseContainer.GetContainer<TContainer>(out var container);
+            return container;
+        }
+
+        public bool ComponentExists(Type componentType)
         {
             return _allComponents.Contains(componentType);
-        }
-
-        public void DeregisterContainer(PmdComponentId id)
-        {
-            if (_runtimeContainers.Remove(id, out var container))
-            {
-                container.GetAllComponents()
-                    .ForEach(entry => DeregisterComponent(entry.Type, entry.Id, false));
-                _containerCounter--;
-            }
         }
 
         public List<TComponent> GetAllComponents<TComponent>() where TComponent : PmdComponent
@@ -241,37 +230,49 @@ namespace PmdThing.Core
                 {
 
                     switch (queuedComponent.Action)
-                    {
+                    { 
                         case PmdComponentAction.Add:
-                            _processQueue.Add(queuedComponent.Instance);
+                            _processList.Add(queuedComponent.Instance);
                             break;
+
                         case PmdComponentAction.Remove:
-                            _processQueue.Remove(queuedComponent.Instance);
+                            _processList.Remove(queuedComponent.Instance);
+                            queuedComponent.Instance.Dispose();
                             break;
                         default:
                             throw new InvalidOperationException("Not supported");
                     }
 
+                    _processList.Sort();
+
                 }
 
-                foreach (var component in _processQueue)
+                foreach (var component in _processList)
                 {
                     if (!component.ShouldUpdate) continue;
 
-                    component.GetNextUpdateTask()?.Invoke();
+                    component
+                        .GetNextUpdateTask()?
+                        .Invoke();
                     component.Update();
 
                 }
 
                 _framework.Graphics.PreRender();
 
-                foreach (var component in _processQueue)
+                foreach (var component in _processList)
                 {
                     if (!component.DoesRendering) continue;
-
                     component.GetNextRenderTask()?.Invoke();
-                    if (component.DoesRendering) component.Render();
+                    component.Render();
                 }
+
+                foreach (var component in _processList)
+                {
+                    if (!component.HandlesPostRender) continue;
+                    component.PostRender();
+                }
+
 
                 _framework.Graphics.PostRender();
 

@@ -1,7 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Reflection.Metadata;
-using System.Xml;
-using GlmSharp;
+﻿using GlmSharp;
 using PmdThing.Components;
 
 namespace PmdThing.Core.Util
@@ -10,6 +7,12 @@ namespace PmdThing.Core.Util
     {
 
         public static vec2 UpVector = new(0, -1);
+
+        public enum ShaderType
+        {
+            Vertex,
+            Fragment
+        }
 
         public enum Pokemon
         {
@@ -52,13 +55,17 @@ namespace PmdThing.Core.Util
             Tumble,
             TumbleBack,
             Wake,
-            Walk
+            Walk,
+            TailWhip
         }
 
         public class PmdAnimation
         {
             public int[] Durations { get; set; } = [];
             public required SpriteSheet SpriteSheet { get; set; }
+
+            public int OffsetX { get; set; }
+            public int OffsetY { get; set; }
         }
 
         public enum AnimationDirection
@@ -93,7 +100,7 @@ namespace PmdThing.Core.Util
             // animations in sprite sheet start at south
             var theta = CalculateAngle(direction);
 
-            int index = (int)(theta / (Math.PI / 4));
+            var index = (int)(theta / (Math.PI / 4));
             return (AnimationDirection) index;
 
         }

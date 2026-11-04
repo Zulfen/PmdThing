@@ -1,26 +1,36 @@
 ﻿using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util;
+using PmdThing.Core.Util.Structures;
 using PmdComponentId = System.Int32;
+using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core
 {
     public class PmdContainer
     {
 
-        private readonly PmdGameBase _gameBase = PmdGameBase.GetInstance();
+        protected readonly PmdGameBase Base = PmdGameBase.GetInstance();
         protected readonly PmdFramework Framework = PmdFrameworkFactory.GetInstance();
         private readonly PmdComponentRegistry _localTypes = new();
-        
+
+        private readonly Dictionary<Type, PmdContainerId> _properties = new();
+
+
         public PmdComponent GetComponent(Type componentType)
         {
             var id = _localTypes.GetFirst(componentType);
-            return _gameBase.GetRuntimeComponent(id);
+            return Base.GetRuntimeComponent(id);
+        }
+
+        public PmdComponentId GetFirstId(Type componentType)
+        {
+            return _localTypes.GetFirst(componentType);
         }
 
         public TComponent GetComponent<TComponent>() where TComponent : PmdComponent
         {
             var id = _localTypes.GetFirst(typeof(TComponent));
-            return (TComponent)_gameBase.GetRuntimeComponent(id);
+            return (TComponent)Base.GetRuntimeComponent(id);
         }
 
         public TComponent? GetIfExists<TComponent>(bool unique) where TComponent : PmdComponent
@@ -32,13 +42,13 @@ namespace PmdThing.Core
 
             var id = unique
                 ? _localTypes.GetFirst(typeof(TComponent))
-                : _gameBase.GetSharedComponentId(typeof(TComponent));
+                : Base.GetSharedComponentId(typeof(TComponent));
             return GetOtherComponent<TComponent>(id);
         }
 
         protected TComponent GetOtherComponent<TComponent>(PmdComponentId id) where TComponent : PmdComponent
         {
-            return (TComponent)_gameBase.GetRuntimeComponent(id);
+            return (TComponent)Base.GetRuntimeComponent(id);
         }
 
         public List<PmdComponentRegistry.PmdComponentEntry> GetAllComponents()
@@ -48,23 +58,23 @@ namespace PmdThing.Core
 
         public PmdComponentId RegisterComponent<TComponent>(bool unique, params object[] arguments) where TComponent : PmdComponent
         {
-            var id = _gameBase!.RegisterComponent<TComponent>(unique ? this : null, unique, out _, arguments);
+            var id = Base.RegisterComponent<TComponent>(this, unique, out _, arguments);
             _localTypes.Add(typeof(TComponent), id);
             return id;
         }
 
-        private bool ComponentExists(Type componentType, bool unique)
+        public bool ComponentExists(Type componentType, bool unique)
         {
             return unique
                 ? _localTypes.Contains(componentType)
-                : _gameBase.HasComponent(componentType);
+                : Base.ComponentExists(componentType);
         }
 
         public PmdComponentId RegisterComponent<TComponent>(bool unique,
                                                             out TComponent instance,
                                                             params object[] arguments) where TComponent : PmdComponent
         {
-            var id = _gameBase!.RegisterComponent(unique ? this : null, unique, out instance, arguments);
+            var id = Base.RegisterComponent(unique ? this : null, unique, out instance, arguments);
             _localTypes.Add(typeof(TComponent), id);
             return id;
         }
@@ -77,8 +87,8 @@ namespace PmdThing.Core
             TComponent instanceOut;
             if (ComponentExists(typeof(TComponent), unique))
             {
-                id = _localTypes.GetFirst(typeof(TComponent));
-                instanceOut = (TComponent)_gameBase!.GetRuntimeComponent(id);
+                id = unique ? _localTypes.GetFirst(typeof(TComponent)) : Base.GetSharedComponentId(typeof(TComponent));
+                instanceOut = (TComponent)Base.GetRuntimeComponent(id);
             }
             else
             {
@@ -93,30 +103,55 @@ namespace PmdThing.Core
         {
             var registered = ComponentExists(typeof(TComponent), unique);
 
-            var id = registered ? _localTypes.GetFirst(typeof(TComponent)) : RegisterComponent<TComponent>(unique, arguments);
+            var id = registered ? _localTypes.GetFirst(typeof(TComponent)) : RegisterComponent<TComponent>(unique, null, arguments);
             return id;
         }
+
+        /// <summary>
+        /// Shorthand for creating listenable components programatically.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="value"></param>
+        /// <param name="unique"></param>
+        /// <returns></returns>
+        public PmdComponentId RegisterProperty<T>(T value, bool unique = true)
+        {
+            // Probably a nicer way to do this.
+            var config = new PmdComponentConfig
+            {
+                Parent = this,
+            };
+
+            var listenableComponent = new PmdListenableComponent<T>(config, value);
+            var id = Base.RegisterComponent(listenableComponent, unique);
+
+            _properties.Add(typeof(T), id);
+            _localTypes.Add(listenableComponent.GetType(), id);
+            return id;
+        }
+
+        public T GetProperty<T>(bool unique = true)
+        {
+            if (_properties.TryGetValue(typeof(T), out var id))
+            {
+                var listenableComponent = (PmdListenableComponent<T>)Base.GetRuntimeComponent(id);
+                return listenableComponent.ComponentValue;
+            }
+
+            throw new ArgumentException($"Property of type {typeof(T)} was not registered");
+        }
+
 
         public void Deregister<TComponent>(PmdComponentId id, bool unique)
         {
             _localTypes.Remove(typeof(TComponent), id);
-            _gameBase.DeregisterComponent(typeof(TComponent), id, unique);
-        }
-
-        public void Deregister<TComponent>(bool unique)
-        {
-            var registered = ComponentExists(typeof(TComponent), unique);
-            if (!registered) return;
-
-            var id = unique ? _localTypes.GetFirst(typeof(TComponent)) : _gameBase.GetSharedComponentId(typeof(TComponent));
-            Deregister<TComponent>(id, unique);
-            
+            Base.DeregisterComponent(typeof(TComponent), id, unique);
         }
 
         private void _InternalDestroy()
         {
             _localTypes.GetAll()
-                .ForEach(entry => _gameBase!.DeregisterComponent(entry.Type, entry.Id, false));
+                .ForEach(entry => Base.DeregisterComponent(entry.Type, entry.Id, false));
         }
 
         ~PmdContainer()

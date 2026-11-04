@@ -35,6 +35,9 @@ namespace PmdThing.Core.Util
             [XmlElement("CopyOf")]
             public PmdConstants.AnimationType? CopyOf { get; set; }
 
+            public int? OffsetX { get; set; }
+            public int? OffsetY { get; set; }
+
         }
     }
 }

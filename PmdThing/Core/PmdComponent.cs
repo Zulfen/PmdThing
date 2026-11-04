@@ -2,37 +2,46 @@
 using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util;
 using PmdComponentId = System.Int32;
+using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core
 {
-    public abstract class PmdComponent(PmdComponentConfig config)
+    public abstract class PmdComponent(PmdComponentConfig config) : IComparable<PmdComponent>, IDisposable
     {
 
         // re-add init method
         // ReSharper disable UseSymbolAlias :3
 
-        private readonly Func<PmdComponentId, PmdComponent>? _otherComponent = config.OtherComponent;
-        private readonly Func<Type, PmdComponentId, PmdComponent?>? _containerComponent = config.ContainerComponent;
-        private readonly Func<Type, PmdComponent>? _sharedComponent = config.SharedComponent;
-        
-
         // can be null
-        public readonly PmdContainer? Parent = config.Parent;
+        private readonly PmdContainer? _parent = config.Parent;
+        public int Priority { get; set; } = config.Priority;
 
         #pragma warning restore IDE0044
         public bool ShouldUpdate = true;
         public bool DoesRendering = false;
-        public int Priority = config.Priority;
+        public bool HandlesPostRender = false;
+        private bool _disposedValue;
 
         private readonly ConcurrentQueue<Action> _updateTasks = new();
         private readonly ConcurrentQueue<Action> _renderTasks = new();
+
+        protected readonly PmdGameBase Base = PmdGameBase.GetInstance();
         protected readonly PmdFramework Framework = PmdFrameworkFactory.GetInstance();
+
+        public int CompareTo(PmdComponent? other)
+        {
+            return other?.Priority.CompareTo(Priority) ?? 0;
+        }
 
         public virtual void Update()
         {
         }
 
         public virtual void Render()
+        {
+        }
+
+        public virtual void PostRender()
         {
         }
 
@@ -53,6 +62,8 @@ namespace PmdThing.Core
                 case ProcessingOrder.Render:
                     _renderTasks.Enqueue(task);
                     break;
+                default:
+                    break;
             }
         }
 
@@ -70,60 +81,75 @@ namespace PmdThing.Core
 
         public PmdContainer? GetParent()
         {
-            return Parent;
+            return _parent;
+        }
+
+        public virtual Type? TickBefore()
+        {
+            return null;
         }
 
         // Useful wrappers
         protected TComponent GetParentComponent<TComponent>() where TComponent : PmdComponent
         {
-            return (TComponent)Parent!.GetComponent(typeof(TComponent));
+            return _parent!.GetComponent<TComponent>();
         }
 
         protected TComponent? GetParentIfExists<TComponent>(bool unique = true) where TComponent : PmdComponent
         {
-            return Parent!.GetIfExists<TComponent>(unique);
+            return _parent!.GetIfExists<TComponent>(unique);
         }
 
         protected TComponent GetOtherComponent<TComponent>(PmdComponentId id) where TComponent : PmdComponent
         {
-            return (TComponent)_otherComponent!.Invoke(id);
+            return (TComponent)Base.GetRuntimeComponent(id);
         }
 
-        protected TComponent? GetContainerComponent<TComponent>(PmdComponentId id) where TComponent : PmdComponent
+        protected TComponent GetBaseContainerComponent<TComponent>(PmdContainerId id) where TComponent : PmdComponent
         {
-            return _containerComponent!.Invoke(typeof(TComponent), id) as TComponent;
+            return (TComponent)Base.GetContainerComponent(typeof(TComponent), id);
+        }
+
+        protected TComponent GetBaseContainerComponent<TContainer, TComponent>() where TComponent : PmdComponent where TContainer : PmdContainer
+        {
+            return (TComponent)Base.GetContainerComponent(typeof(TContainer), typeof(TComponent));
+        }
+
+        protected TContainer GetBaseContainer<TContainer>() where TContainer : PmdContainer
+        {
+            return Base.GetFirstContainer<TContainer>();
         }
 
         protected TComponent GetSharedComponent<TComponent>() where TComponent : PmdComponent
         {
-            return (TComponent)_sharedComponent!.Invoke(typeof(TComponent));
+            return (TComponent)Base.GetSharedComponent(typeof(TComponent));
         }
 
         /**
          * Note: Requires a parent container to work
          */
-        protected PmdComponentId RegisterIfNotExist<TComponent>(
+        public PmdComponentId RegisterIfNotExist<TComponent>(
             bool unique,
             out TComponent instance,
             params object[] arguments) where TComponent : PmdComponent
         {
-            return Parent!.RegisterIfNotExist(unique, out instance, arguments);
+            return _parent!.RegisterIfNotExist(unique, out instance, arguments);
         }
 
         /**
          * Note: Requires a parent container to work
          */
-        protected PmdComponentId Register<TComponent>(
+        public PmdComponentId Register<TComponent>(
             bool unique,
             out TComponent instance,
             params object[] arguments) where TComponent : PmdComponent
         {
-            return Parent!.RegisterComponent(unique, out instance, arguments);
+            return _parent!.RegisterComponent(unique, out instance, arguments);
         }
 
         protected void DeregisterParent<TComponent>(PmdComponentId id, bool unique) where TComponent : PmdComponent
         {
-            Parent!.Deregister<TComponent>(id, unique);
+            _parent!.Deregister<TComponent>(id, unique);
         }
 
         /**
@@ -133,7 +159,30 @@ namespace PmdThing.Core
             bool unique,
             params object[] arguments) where TComponent : PmdComponent
         {
-            return Parent!.RegisterIfNotExist<TComponent>(unique, arguments);
+            return _parent!.RegisterIfNotExist<TComponent>(unique, arguments);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                Cleanup();
+                _disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        ~PmdComponent()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
 
     }

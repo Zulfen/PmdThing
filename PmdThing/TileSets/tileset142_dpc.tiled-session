@@ -1,0 +1,40 @@
+{
+    "activeFile": "142map.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "142.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 2
+        },
+        "142map.tmx": {
+            "scale": 2,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 215.75,
+                "y": 266.75
+            }
+        }
+    },
+    "last.imagePath": "C:/Users/Joshua Passmore/source/repos/PmdThing/PmdThing/TileSets",
+    "map.height": 25,
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 24,
+    "map.tileWidth": 24,
+    "map.width": 25,
+    "openFiles": [
+        "142map.tmx",
+        "142.tsx"
+    ],
+    "project": "tileset142_dpc.tiled-project",
+    "recentFiles": [
+        "142.tsx",
+        "142map.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 24,
+        "width": 24
+    }
+}

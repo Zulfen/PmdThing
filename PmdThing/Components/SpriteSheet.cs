@@ -1,18 +1,14 @@
-﻿using System.Net.Sockets;
-using System.Xml.Linq;
-using System.Xml.Serialization;
+﻿using System.Drawing;
 using PmdThing.Core;
 using PmdThing.Core.Hardware.Graphics;
-using PmdThing.Core.Util;
 
 namespace PmdThing.Components
 {
     public class SpriteSheet : PmdComponent
     {
 
-        private readonly List<PmdRect[]> _animationRow = [];
+        private readonly List<RectangleF[]> _animationRow = [];
         private readonly PmdImage _spriteSheetImage;
-        private readonly PmdConstants.AnimationType _type;
 
         private readonly int _spriteWidth;
         private readonly int _spriteHeight;
@@ -22,12 +18,14 @@ namespace PmdThing.Components
         private readonly int _columns;
         private readonly int _rows;
 
+        // add location
+
         // https://moonside.games/posts/sdl-gpu-sprite-batcher/
 
         public SpriteSheet(PmdComponentConfig config, string path, int spriteWidth, int spriteHeight) : base(config)
         {
 
-            if (!Framework.Graphics.LoadImage(path, out _spriteSheetImage)) return;
+            _spriteSheetImage = Framework.Graphics.LoadImage(this, path);
 
             _spriteHeight = spriteHeight;
             _spriteWidth = spriteWidth;
@@ -40,11 +38,11 @@ namespace PmdThing.Components
             for (var row = 0; row < _rows; row++)
             {
 
-                List<PmdRect> rects = [];
+                List<RectangleF> rects = [];
 
                 for (var column = 0; column < _columns; column++)
                 {
-                    PmdRect newRect = new()
+                    RectangleF newRect = new()
                     {
                         Width = spriteWidth,
                         Height = spriteHeight,
@@ -68,9 +66,24 @@ namespace PmdThing.Components
             _spriteSheetImage.Destroy();
         }
 
-        public int GetScaledSpriteGetSize()
+        public int GetScaledWidth()
         {
             return _spriteWidth * SpriteScale;
+        }
+
+        public int GetScaledHeight()
+        {
+            return _spriteHeight * SpriteScale;
+        }
+
+        public int GetSpriteWidth()
+        {
+            return _spriteWidth;
+        }
+
+        public int GetSpriteHeight()
+        {
+            return _spriteHeight;
         }
 
         public int GetRows()
@@ -83,7 +96,15 @@ namespace PmdThing.Components
             return _columns;
         }
 
-        public void DrawSprite(int x, int y, int row, int column, bool centered = true)
+        public PmdImage GetImage()
+        {
+            return _spriteSheetImage;
+        }
+
+        // make big texture atlas for everything
+        // store ogl float coords in here. probably calculate them here
+        // List<Atlas> with ogl start and end coords?
+        public void DrawSprite(float x, float y, int row, int column, bool centered = true)
         {
             if (row > _rows || column > _columns) throw new IndexOutOfRangeException(
                 $"Tried to draw row {row},{column}, which exceeds the max amount of {_rows},{_columns}");
@@ -91,7 +112,7 @@ namespace PmdThing.Components
             var rowRects = _animationRow[row];
             var sourceRect = rowRects[column];
 
-            var destRect = new PmdRect
+            var destRect = new RectangleF
             {
                 X = x,
                 Y = y,
@@ -100,6 +121,14 @@ namespace PmdThing.Components
             };
 
             _spriteSheetImage.Draw(destRect, sourceRect, centered);
+
+        }
+
+        public void DrawSprite(RectangleF sourceRect, RectangleF destRect)
+        {
+            destRect.Width *= SpriteScale;
+            destRect.Height *= SpriteScale;
+            _spriteSheetImage.Draw(destRect, sourceRect, false);
         }
 
     }

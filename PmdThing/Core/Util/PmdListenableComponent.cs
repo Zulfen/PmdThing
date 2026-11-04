@@ -4,10 +4,10 @@
     {
         private readonly PmdListenableValue<T> _value;
 
-        public T Value
+        public T ComponentValue
         {
             get => _value.Get();
-            set => _value.Set(value);
+            set => SetValue(value);
         }
 
         public event Action<T, T>? Changed;
@@ -18,14 +18,24 @@
             _value.Changed += OnChanged;
         }
 
+        public void SetChanged(bool changed)
+        {
+            _value.SetChanged(changed, ComponentValue);
+        }
+
         private void OnChanged(T newValue, T oldValue)
         {
             Changed?.Invoke(newValue, oldValue);
         }
 
+        protected virtual void SetValue(T newData)
+        {
+            _value.Set(newData);
+        }
+
         public override void Cleanup()
         {
-            throw new NotImplementedException();
+            // nothing
         }
     }
 }
