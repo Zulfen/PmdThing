@@ -59,7 +59,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL
                 Api = HardwareApi.None,
                 ApiVersion = "N/A",
                 Passed = true,
-                HardwareTransformations = false,
+                ShaderSupport = false,
             };
         }
     }

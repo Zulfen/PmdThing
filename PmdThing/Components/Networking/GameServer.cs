@@ -117,6 +117,11 @@ namespace PmdThing.Components.Networking
 
                     var zoruaTile = zorua.GetComponent<TiledTransform>();
                     zoruaTile.MoveTo(new PmdTileRef(2, 1));
+
+                    Base.RegisterContainer<TestPokemon>(out var eevee, PmdConstants.Pokemon.Eevee, false);
+
+                    var eeveeTile = eevee.GetComponent<TiledTransform>();
+                    eeveeTile.MoveTo(new PmdTileRef(3, 10));
                 });
             }
         }

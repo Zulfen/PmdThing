@@ -2,10 +2,8 @@
 using PmdThing.Components;
 using PmdThing.Components.Graphics.OpenGL;
 using PmdThing.Core;
-using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Hardware.Graphics;
 using PmdThing.Core.Network.Rokon;
-using PmdThing.Core.Util;
 using static PmdThing.Core.Util.PmdConstants;
 
 namespace PmdThing.Containers
@@ -18,14 +16,14 @@ namespace PmdThing.Containers
         private readonly TiledTransform _tiledTransform;
 
         private readonly bool _player;
-        private readonly Pokemon _pokemon;
+        public Pokemon Type { get; init; }
 
-        public TestPokemon(PmdContainerConfig config, Pokemon pokemon, bool player) : base(config)
+        public TestPokemon(PmdContainerConfig config, Pokemon type, bool player) : base(config)
         {
             var capabilities = Framework.Graphics.GetCapabilities();
 
-            _player = player && !capabilities.Headless;
-            _pokemon = pokemon;
+            _player = player;
+            Type = type;
             
 
             if (capabilities.Api == PmdGraphics.HardwareApi.OpenGl)
@@ -40,53 +38,56 @@ namespace PmdThing.Containers
             (
                 true,
                 out _tiledTransform,
-                $"{_pokemon}_tile",
+                $"{Type}_tile",
                 0,
                 0
             );
 
             
-
             if (!capabilities.Headless)
             {
-                RegisterComponent<SpriteRenderer>(true, out var pokemonRenderer, _pokemon);
+                RegisterComponent<SpriteRenderer>(true, out var pokemonRenderer, Type);
                 _renderer = pokemonRenderer;
-            }
-            else
-            {
-                RegisterIfNotExist<Collision>(false, out var collision, _tiledTransform);
-                collision.RegisterTransform(_tiledTransform);
-                collision.CollisionChange += PokemonCollisionChange;
             }
 
             if (_player)
             {
                 GetIfExists<Camera>(false)?
                     .SetTarget(this);
+
                 RegisterComponent<TiledInput>(true);
+
+                RegisterComponent<PlayerCollision>(false, out var collision, _tiledTransform);
+                collision.CollisionChange += PlayerCollision_Changed;
+            }
+            else
+            {
+                var collision = GetIfExists<PlayerCollision>(false);
+                collision?.RegisterTransform(_tiledTransform);
             }
 
            
             _tiledTransform.Moving.Changed += Moving_Changed;
             _tiledTransform.Direction.Changed += Direction_Changed;
 
-            Framework.Logger.LogInformation("Spawned Pokémon {pokemon}. Player: {player}", pokemon, player);
+            Framework.Logger.LogInformation("Spawned Pokémon {pokemon}. Player: {player}", type, player);
 
         }
 
-        private void PokemonCollisionChange(bool colliding, PmdTileRef tile)
+        private void PlayerCollision_Changed(PmdContainer? sender, PlayerCollision.CollisionEventArgs e)
         {
-            
-            if (!_player && colliding && tile == _tiledTransform.ComponentValue)
+            if (e.Collided && sender is TestPokemon otherPokemon)
             {
-                Framework.Logger.LogDebug("Collision detected with {pokemon} at x={column}, y={row}", _pokemon, tile.Column, tile.Row);
-                _tiledTransform.MoveInDirection(AnimationDirection.South);
+                Framework.Logger.LogDebug("Collision detected with {pokemon} and {otherPokemon} at x={column}, y={row}",
+                    Type, otherPokemon.Type, e.Tile.Column, e.Tile.Row);
+
+                var pokemonTransform = otherPokemon.GetComponent<TiledTransform>();
+                pokemonTransform.MoveInDirection(AnimationDirection.South);
             }
             else
             {
-                _tiledTransform.CanMove.Set(!colliding);
+                _tiledTransform.CanMove.Set(!e.Collided);
             }
-            
         }
 
         private void Direction_Changed(AnimationDirection newDirection, AnimationDirection prevDirection)

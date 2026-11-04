@@ -15,11 +15,7 @@ namespace PmdThing.Components.Networking.QueryHandlers
         {
             if (!parentContainerId.HasValue) return null;
             var transform = GetContainerComponent<TiledTransform>(parentContainerId.Value);
-
-            if (!transform.Moving.Get())
-            {
-                transform.MoveInDirection(requestData);
-            }
+            transform.MoveInDirection(requestData);
             return null;
         }
     }

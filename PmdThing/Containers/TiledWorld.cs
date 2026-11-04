@@ -35,6 +35,7 @@ namespace PmdThing.Containers
                 RegisterComponent<TiledWorldRenderer>(true, out var renderer);
                 _renderer = renderer;
             }
+
         }
 
         public override async Task Init()

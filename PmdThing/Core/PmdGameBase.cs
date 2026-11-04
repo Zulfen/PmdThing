@@ -226,6 +226,12 @@ namespace PmdThing.Core
             return _runtimeComponents[id];
         }
 
+        public TComponent GetSharedComponent<TComponent>() where TComponent : PmdComponent
+        {
+            var id = _sharedComponents.GetFirst(typeof(TComponent));
+            return (TComponent)_runtimeComponents[id];
+        }
+
         public PmdComponentId GetSharedComponentId(Type componentType)
         {
             return _sharedComponents.GetFirst(componentType);

@@ -5,7 +5,7 @@ using System.Net.Sockets;
 
 namespace PmdThing.Components.Networking.Rokon
 {
-    public class RokonSocketServer : GameServer<IPAddress, RokonServerConnection>
+    public class RokonSocketServer : GameServer<IPEndPoint, RokonServerConnection>
     {
 
         private readonly Socket _serverSocket;
@@ -41,7 +41,7 @@ namespace PmdThing.Components.Networking.Rokon
                     var id = RegisterComponent<RokonServerConnection>(true, out var connection, socket);
                     OnClientConnected(connection, id);
 
-                    _ = ProcessLoop(connection);
+                    _ = Task.Run(() => ProcessLoop(connection));
 
                 }
                 catch (SocketException ex)

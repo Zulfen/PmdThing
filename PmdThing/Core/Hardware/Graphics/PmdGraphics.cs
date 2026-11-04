@@ -19,7 +19,7 @@
             public string? ApiVersion;
             public required bool Passed;
             public string? FailureReason;
-            public bool HardwareTransformations; // e.g. if things like camera position are handled by passing it to a shader
+            public bool ShaderSupport; // e.g. if things like camera position are handled by passing it to a shader
         }
 
         public abstract PmdImage LoadImage(PmdComponent parent, string path);

@@ -20,7 +20,7 @@ namespace PmdThing.Core.Hardware.Graphics.Headless
             return new Capabilities
             {
                 Headless = true,
-                HardwareTransformations = false,
+                ShaderSupport = false,
                 Api = HardwareApi.None,
                 Passed = true
             };

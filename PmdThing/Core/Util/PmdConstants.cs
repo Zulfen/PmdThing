@@ -65,11 +65,15 @@ namespace PmdThing.Core.Util
         public class PmdAnimation
         {
             public int[] Durations { get; set; } = [];
-            public required SpriteSheet SpriteSheet { get; set; }
+            public SpriteSheet? SpriteSheet { get; set; }
+            public required string SheetPath { get; set; }
 
             public int OffsetX { get; set; }
             public int OffsetY { get; set; }
+            public required int Width { get; set; }
+            public required int Height { get; set; }
         }
+     
 
         public enum AnimationDirection
         {

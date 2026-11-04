@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Timers;
 using PmdThing.Core;
 using PmdThing.Core.Util;
 
@@ -22,6 +23,11 @@ namespace PmdThing.Components
         }
 
         private void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            Tick();
+        }
+
+        private void Tick()
         {
             foreach (var callback in _callbacks)
             {

@@ -84,7 +84,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
                 ApiVersion = GL.GetString(StringName.Version),
                 FailureReason = SDL_GetError(),
                 Passed = _supportsGl3,
-                HardwareTransformations = true
+                ShaderSupport = true
             };
         }
     }

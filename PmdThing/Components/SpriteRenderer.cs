@@ -35,6 +35,18 @@ namespace PmdThing.Components
                     return;
                 }
 
+                if (animation.SpriteSheet == null)
+                {
+                    Register<SpriteSheet>(
+                        true,
+                        out var loadedSheet,
+                        animation.SheetPath,
+                        animation.Width,
+                        animation.Height
+                    );
+                    animation.SpriteSheet = loadedSheet;
+                }
+
                 _spriteSheet = animation.SpriteSheet;
                 _columnIndex = 0;
                 _frameCounter = 0;
@@ -105,20 +117,14 @@ namespace PmdThing.Components
                         }
                     }
 
-                    Register<SpriteSheet>(
-                        true,
-                        out var spriteSheet,
-                        GetImagePath(type),
-                        xmlAnimation.Width,
-                        xmlAnimation.Height
-                    );
-
                     var pmdAnimation = new PmdAnimation
                     {
                         Durations = xmlAnimation.Durations,
-                        SpriteSheet = spriteSheet,
+                        SheetPath = GetImagePath(type),
                         OffsetX = xmlAnimation.OffsetX ?? 0,
                         OffsetY = xmlAnimation.OffsetY ?? 0,
+                        Width = xmlAnimation.Width,
+                        Height = xmlAnimation.Height,
                     };
 
                     animations.Add(type, pmdAnimation);

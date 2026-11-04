@@ -55,16 +55,14 @@ namespace PmdThing.Components
 
         public void MoveTo(PmdTileRef tile, float speed = 2f)
         {
-            if (Moving.Get()) return;
-
             FaceTowards(tile);
-            Speed.Set(speed);
+            Moving.Set(CanMove.Get());
 
+            Speed.Set(speed);
             Destination.Set(tile);
-            Moving.Set(true);
 
             // this sucks mega balls 
-            var timerId = Register<Timer>(true, out var timer, (double)1000 / 30, ProcessingOrder.Update);
+            var timerId = Register<Timer>(true, out var timer, 33.3f, ProcessingOrder.Update);
             timer.RegisterTask(() =>
             {
                 var pointVector = _transform.ToVec2();
@@ -73,18 +71,20 @@ namespace PmdThing.Components
 
                 if (distanceVector.Length <= step)
                 {
-                    Moving.Set(false);
-
                     SetValue(tile);
                     Destination.Set(tile);
-
-                    DeregisterParent<Timer>(timerId, true);
                 }
-                else if (CanMove.Get() && distanceVector.Length > 0)
+
+                if (CanMove.Get() && distanceVector.Length > 0)
                 {
                     var unitPos = distanceVector / distanceVector.Length;
                     _transform.Set(pointVector + unitPos * step);
+                    return;
                 }
+
+                Moving.Set(false);
+                DeregisterParent<Timer>(timerId, true);
+
             });
         }
 
@@ -92,7 +92,7 @@ namespace PmdThing.Components
         {
             var animationDirection = PmdConstants.DirectionToVec2(direction);
             var newTile = PmdConstants.Vec2ToTile(ComponentValue.ToVec2() + animationDirection);
-            MoveTo(newTile, 3f);
+            MoveTo(newTile);
         }
 
         protected override void SetValue(PmdTileRef tile)

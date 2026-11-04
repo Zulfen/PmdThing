@@ -1,6 +1,4 @@
 ﻿using PmdThing.Core.Hardware.Framework;
-using PmdThing.Core.Network;
-using PmdComponentId = System.Int32;
 
 namespace PmdThing.Core
 {

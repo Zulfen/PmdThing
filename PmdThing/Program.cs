@@ -42,10 +42,6 @@ public class Program
             game.RegisterComponent<RokonTileProvider>(game.BaseContainer, true, out var networkLoader);
             game.RegisterContainer<TiledWorld>(out var tiledGame, networkLoader);
         }
-        
-
-        // Make a generic shared container. Was going to do this in GameBase but decided not to.
-        // TODO: Maybe removed the shared components feature and enforce passing around components from a main container like thi
 
         if (!headless)
         {
