@@ -8,12 +8,13 @@ using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core
 {
-    public class PmdContainer(PmdGameBase game, PmdFramework framework, PmdContainer? parent)
+    public class PmdContainer(PmdContainerConfig config)
     {
 
-        protected readonly PmdGameBase Base = game;
-        protected readonly PmdFramework Framework = framework;
-        public readonly PmdContainer? Parent = parent;
+        protected readonly PmdGameBase Base = config.Base;
+        protected readonly PmdFramework Framework = config.Framework;
+        public readonly PmdMultiContainer? Parent = config.Parent;
+        public readonly PmdContainerId Id = config.Id; 
 
         private readonly PmdComponentRegistry _localTypes = new();
 
@@ -102,7 +103,7 @@ namespace PmdThing.Core
             var id = RegisterComponent<TComponent>(unique, out var component, arguments);
             instance = component;
 
-            PmdNetworkHandler.Instance?.RegisterSyncedComponent(id, tag);
+            PmdNetworkHandler.Instance?.RegisterSyncedComponent(id, component, unique, this, tag);
             return id;
         }
 
@@ -125,6 +126,19 @@ namespace PmdThing.Core
             instance = instanceOut;
             return id;
         }
+
+        public PmdComponentId RegisterSyncedIfNotExist<TComponent>(bool unique,
+            string tag,
+            out TComponent instance,
+            params object[] arguments) where TComponent : PmdComponent
+        {
+            var id = RegisterIfNotExist<TComponent>(unique, out var component, arguments);
+            instance = component;
+
+            PmdNetworkHandler.Instance?.RegisterSyncedComponent(id, component, unique, this, tag);
+            return id;
+        }
+
 
         public PmdComponentId RegisterIfNotExist<TComponent>(bool unique, params object[] arguments) where TComponent : PmdComponent
         {

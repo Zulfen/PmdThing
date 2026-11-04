@@ -20,7 +20,7 @@ namespace PmdThing.Containers
         private readonly TaskCompletionSource<int> _tileWidthSrc = new();
         private readonly TaskCompletionSource<int> _tileHeightSrc = new();
 
-        public TiledWorld(PmdGameBase game, PmdFramework framework, PmdContainer? parent, IPmdTileProvider tileProvider) : base(game, framework, parent)
+        public TiledWorld(PmdContainerConfig config, IPmdTileProvider tileProvider) : base(config)
         {
             TileProvider = tileProvider;
             AsyncInit = true;

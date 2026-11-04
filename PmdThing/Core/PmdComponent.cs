@@ -69,7 +69,7 @@ namespace PmdThing.Core
                     _renderTasks.Enqueue(task);
                     break;
                 default:
-                    break;
+                    throw new ArgumentOutOfRangeException(nameof(order), order, null);
             }
         }
 
@@ -145,6 +145,15 @@ namespace PmdThing.Core
             params object[] arguments) where TComponent : PmdComponent
         {
             return _parent!.RegisterIfNotExist(unique, out instance, arguments);
+        }
+
+        public PmdComponentId RegisterSyncedIfNotExist<TComponent>(
+            bool unique,
+            string tag,
+            out TComponent instance,
+            params object[] arguments) where TComponent : PmdComponent
+        {
+            return _parent!.RegisterSyncedIfNotExist(unique, tag, out instance, arguments);
         }
 
         /**

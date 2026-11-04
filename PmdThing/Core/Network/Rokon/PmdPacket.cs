@@ -120,8 +120,13 @@ public struct PmdPacket()
     }
 
 
-    public static PacketDto Decode(byte[] packetBytes)
+    public static PacketDto? Decode(byte[] packetBytes)
     {
+        if (packetBytes[0] == 0)
+        {
+            return null;
+        }
+
         //var options = MessagePackSerializerOptions.Standard
             //.WithSecurity(MessagePackSecurity.UntrustedData);
 

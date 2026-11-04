@@ -7,6 +7,7 @@ namespace PmdThing.Components.Networking.Rokon
     public class RokonServerConnection : ServerConnection<IPAddress>
     {
         private readonly IPAddress _ip;
+        private bool _socketClosed = false;
 
         public RokonServerConnection(PmdComponentConfig config, Socket socket) : base(config)
         {
@@ -19,9 +20,14 @@ namespace PmdThing.Components.Networking.Rokon
 
         public override void Cleanup()
         {
-            base.Cleanup();
-            Socket.Shutdown(SocketShutdown.Both);
-            Socket.Close();
+            if (!_socketClosed)
+            {
+                base.Cleanup();
+                Socket.Shutdown(SocketShutdown.Both);
+                Socket.Close();
+
+                _socketClosed = true;
+            }
         }
 
         public override IPAddress GetEndpoint()

@@ -1,10 +1,12 @@
-﻿using PmdThing.Core.Hardware.Framework;
-using PmdThing.Core.Util.Structures;
+﻿using PmdThing.Core.Util.Structures;
+using System.Reflection;
+using System.Runtime.InteropServices.JavaScript;
+using PmdThing.Core.Util;
 using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core
 {
-    public class PmdMultiContainer(PmdGameBase game, PmdFramework framework, PmdContainer? parent) : PmdContainer(game, framework, parent)
+    public class PmdMultiContainer(PmdContainerConfig config) : PmdContainer(config)
     {
         private readonly PmdContainerRegistry _containerRegistry = new();
 
@@ -16,23 +18,73 @@ namespace PmdThing.Core
 
         public PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, out PmdContainer instance, params object[]? arguments)
         {
+            var newId = id ?? _containerCounter;
+            var newConfig = new PmdContainerConfig(config.Base, Framework, this, id ?? _containerCounter);
+
             object[] completeArgs;
             if (arguments != null)
             {
-                completeArgs = new object[arguments.Length + 3];
-                completeArgs[0] = Base;
-                completeArgs[1] = Framework;
-                completeArgs[2] = this;
+                completeArgs = new object[arguments.Length + 1];
 
-                arguments.CopyTo(completeArgs, 3);
+                completeArgs[0] = newConfig;
+                arguments.CopyTo(completeArgs, 1);
             }
             else
             {
-                completeArgs = [Base, Framework, this];
+                completeArgs = [newConfig];
             }
-            
-            var containerInstance = Activator.CreateInstance(containerType, completeArgs);
-            var newId = id ?? _containerCounter;
+
+            ConstructorInfo? containerConstructor = null;
+            foreach (var constructor in containerType.GetConstructors())
+            {
+                var paramTypes = constructor.GetParameters()
+                    .Select(p => p.ParameterType)
+                    .ToArray();
+
+                if (paramTypes.Length == completeArgs.Length)
+                {
+                    var matches = true;
+
+                    for (var i = 0; i < paramTypes.Length; i++)
+                    {
+                        if (!paramTypes[i].IsInstanceOfType(completeArgs[i]))
+                        {
+                            if (paramTypes[i].IsEnum)
+                            {
+                                var argumentToConvert = completeArgs[i];
+                                // ReSharper disable once UseSymbolAlias
+                                if (argumentToConvert.IsNumericType())
+                                {
+                                    try
+                                    {
+                                        completeArgs[i] = Enum.ToObject(paramTypes[i], argumentToConvert);
+                                    }
+                                    catch (ArgumentException)
+                                    {
+                                        matches = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                matches = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (matches) containerConstructor = constructor;
+                }
+            }
+
+            if (containerConstructor == null)
+            {
+                throw new ArgumentException(
+                    $"Container {containerType} does not have a constructor that matches the provided arguments: {arguments}");
+            }
+
+            var containerInstance = containerConstructor.Invoke(completeArgs);
             if (containerInstance is PmdContainer container)
             {
                 instance = container;

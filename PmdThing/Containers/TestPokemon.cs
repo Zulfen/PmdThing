@@ -10,7 +10,7 @@ using static PmdThing.Core.Util.PmdConstants;
 
 namespace PmdThing.Containers
 {
-
+    [PmdServerSync]
     public class TestPokemon : PmdContainer
     {
 
@@ -20,7 +20,7 @@ namespace PmdThing.Containers
         private readonly bool _player;
         private readonly Pokemon _pokemon;
 
-        public TestPokemon(PmdGameBase game, PmdFramework framework, PmdContainer? parent, int id, Pokemon pokemon, bool player) : base(game, framework, parent)
+        public TestPokemon(PmdContainerConfig config, Pokemon pokemon, bool player) : base(config)
         {
             var capabilities = Framework.Graphics.GetCapabilities();
 
@@ -40,7 +40,7 @@ namespace PmdThing.Containers
             (
                 true,
                 out _tiledTransform,
-                "",
+                $"{_pokemon}_tile",
                 0,
                 0
             );

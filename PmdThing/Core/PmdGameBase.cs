@@ -2,6 +2,7 @@
 using PmdThing.Core.Util;
 using PmdThing.Core.Util.Structures;
 using System.Collections.Concurrent;
+using PmdThing.Core.Network.Rokon;
 using PmdComponentId = System.Int32;
 using PmdContainerId = System.Int32;
 
@@ -51,7 +52,7 @@ namespace PmdThing.Core
             _instance = this;
             Framework = framework;
 
-            BaseContainer = new PmdMultiContainer(this, Framework);
+            BaseContainer = new PmdMultiContainer(new PmdContainerConfig(this, Framework, null, 0));
             Init();
         }
 
@@ -90,10 +91,13 @@ namespace PmdThing.Core
                 };
                 _componentActions.Enqueue(queuedComponent);
 
-                _runtimeComponents.Add(id ?? _componentCounter, component);
-                ComponentRegistered?.Invoke(id ?? _componentCounter, component, unique);
+                var newId = id ?? _componentCounter;
 
-                return id ?? _componentCounter;
+                _runtimeComponents.Add(newId, component);
+
+                ComponentRegistered?.Invoke(newId, component, unique);
+
+                return newId;
 
             }
         }

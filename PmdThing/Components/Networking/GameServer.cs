@@ -31,7 +31,6 @@ namespace PmdThing.Components.Networking
 
         protected GameServer(PmdComponentConfig config) : base(config, typeof(PmdServerSync), PmdPacketSource.Server)
         {
-            Base.ComponentRegistered += RegisterComponent;
             Base.BaseContainer.ContainerRegistered += RegisterContainer;
 
             Instance = this;
@@ -42,17 +41,9 @@ namespace PmdThing.Components.Networking
             var containerType = container.GetType();
             if (!containerType.IsDefined(typeof(PmdServerSync))) return;
 
-            ContainerEntries.Add(container, new ContainerEntry(id, arguments));
-
             if (container is PmdMultiContainer multiContainer)
             {
                 multiContainer.ContainerRegistered += RegisterContainer;
-            }
-
-            PmdComponentId? parentContainerId = null;
-            if (container.Parent != null && ContainerEntries.TryGetValue(container.Parent, out var parentEntry))
-            {
-                parentContainerId = parentEntry.Id;
             }
 
             var packet = new PmdPacket.PacketDto
@@ -62,7 +53,7 @@ namespace PmdThing.Components.Networking
                 PmdPacketType = PmdPacketType.AddContainer,
                 Id = id,
                 Unique = true,
-                ParentContainer = parentContainerId,
+                ParentContainer = container.Parent?.Id,
                 Source = PmdPacketSource.Server,
             };
 
@@ -176,15 +167,15 @@ namespace PmdThing.Components.Networking
         /// </summary>
         public void ReceiveLoop(TConn connection)
         {
-            while (Running)
+            while (Running && connection.Running)
             {
                 var packetBytes = ReceiveBytes(connection);
                 try
                 {
                     var packet = PmdPacket.Decode(packetBytes);
-                    if (!PmdPacket.ValidPacket(packet))
+                    if (packet == null || (!PmdPacket.ValidPacket(packet) && packet.PmdPacketType != PmdPacketType.Query))
                     {
-                        Framework.Logger.LogWarning("Client [{addr}] sent an invalid packet. Dropping connection.", connection.GetEndpoint());
+                        Framework.Logger.LogWarning("Client [{addr}] sent an invalid packet", connection.GetEndpoint());
                         connection.Cleanup();
                         continue;
                     }
@@ -193,22 +184,20 @@ namespace PmdThing.Components.Networking
                     {
                         case PmdPacketType.UpdateComponent:
 
-                            if (IsGenericClass(packet.Type, typeof(PmdListenableValue<>)) && packet.Attribute != null)
+                            if (PmdTypeUtils.IsGenericClass(packet.Type, typeof(PmdListenableValue<>)) && packet.Attribute != null)
                             {
                                 if (packet.Data == null || packet.Data.Length < 2 || packet.ParentContainer == null)
                                 {
-                                    Framework.Logger.LogWarning("Client [{addr}] sent an invalid update packet. Dropping connection.", connection.GetEndpoint());
                                     connection.Cleanup();
                                     continue;
                                 }
 
                                 SubmitTask(() => UpdateListenableValue(packet.ParentContainer.Value, (string)packet.Data![1], packet.Attribute, packet.Data![0]), ProcessingOrder.Update);
                             }
-                            else if (IsGenericClass(packet.Type, typeof(PmdListenableComponent<>)))
+                            else if (PmdTypeUtils.IsGenericClass(packet.Type, typeof(PmdListenableComponent<>)))
                             {
                                 if (packet.ParentContainer == null || packet.Attribute == null)
                                 {
-                                    Framework.Logger.LogWarning("Client [{addr}] sent an invalid update packet. Dropping connection.", connection.GetEndpoint());
                                     connection.Cleanup();
                                     continue;
                                 }
@@ -280,7 +269,7 @@ namespace PmdThing.Components.Networking
         /// </summary>
         public void SendLoop(TConn connection)
         {
-            while (Running)
+            while (Running && connection.Running)
             {
                 var packet = connection.Queue.Take(ShutdownTokenSrc.Token);
                 if (packet.Data == null) continue;
@@ -293,7 +282,6 @@ namespace PmdThing.Components.Networking
         public override void Cleanup()
         {
             Running = false;
-            Base.ComponentRegistered -= RegisterComponent;
             ShutdownTokenSrc.Cancel();
 
             foreach (var connection in _connections.Values)

@@ -4,6 +4,7 @@ using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
 using System.Collections.Concurrent;
 using PmdComponentId = System.Int32;
+using PmdContainerId = System.Int32;
 
 namespace PmdThing.Components.Networking
 {
@@ -53,9 +54,9 @@ namespace PmdThing.Components.Networking
             SubmitTask(() => Disconnect?.Invoke(), ProcessingOrder.Update);
         }
 
-        private void UpdateListenableValue(string tag, string fieldName, object data)
+        private void UpdateListenableValue(PmdContainerId parentId, string tag, string fieldName, object data)
         {
-            var id = GetIdForTag(tag);
+            var id = GetIdForTag(tag, parentId);
             var component = GetOtherComponent(id);
 
             var setMethod = component.GetType()
@@ -67,9 +68,9 @@ namespace PmdThing.Components.Networking
             setMethod?.Invoke(component, [data]);
         }
 
-        private void UpdateListenableComponent(string tag, object data)
+        private void UpdateListenableComponent(PmdContainerId parentId, string tag, object data)
         {
-            var id = GetIdForTag(tag);
+            var id = GetIdForTag(tag, parentId);
 
             var component = GetOtherComponent(id);
             var value = component.GetType().GetProperty("ComponentValue");
@@ -99,7 +100,7 @@ namespace PmdThing.Components.Networking
                 try
                 {
                     var packet = PmdPacket.Decode(packetBytes);
-                    if (!PmdPacket.ValidPacket(packet) && packet.PmdPacketType != PmdPacketType.Query)
+                    if (packet == null || (!PmdPacket.ValidPacket(packet) && packet.PmdPacketType != PmdPacketType.Query))
                     {
                         Framework.Logger.LogWarning("Server sent an invalid packet. Dropping connection.");
                         Cleanup();
@@ -110,20 +111,25 @@ namespace PmdThing.Components.Networking
                     {
                         case PmdPacketType.UpdateComponent:
 
-                            if (IsGenericClass(packet.Type, typeof(PmdListenableValue<>)) && packet.Attribute != null)
+                            if (PmdTypeUtils.IsGenericClass(packet.Type, typeof(PmdListenableValue<>)) && packet.Attribute != null)
                             {
-                                if (packet.Data == null || packet.Data.Length < 2)
+                                if (packet.Data == null || packet.Data.Length < 2 || packet.ParentContainer == null)
                                 {
-                                    Framework.Logger.LogWarning("Server [{addr}] sent an invalid update packet. Dropping connection.", GetEndpoint());
                                     Cleanup();
                                     continue;
                                 }
 
-                                SubmitTask(() => UpdateListenableValue((string)packet.Data![1], packet.Attribute, packet.Data![0]), ProcessingOrder.Update);
+                                SubmitTask(() => UpdateListenableValue(packet.ParentContainer.Value, (string)packet.Data![1], packet.Attribute, packet.Data![0]), ProcessingOrder.Update);
                             }
-                            else if (IsGenericClass(packet.Type, typeof(PmdListenableComponent<>)))
+                            else if (PmdTypeUtils.IsGenericClass(packet.Type, typeof(PmdListenableComponent<>)))
                             {
-                                SubmitTask(() => UpdateListenableComponent(packet.Attribute!, packet.Data![0]), ProcessingOrder.Update);
+                                if (packet.ParentContainer == null || packet.Attribute == null)
+                                {
+                                    Cleanup();
+                                    continue;
+                                }
+
+                                SubmitTask(() => UpdateListenableComponent(packet.ParentContainer.Value, packet.Attribute!, packet.Data![0]), ProcessingOrder.Update);
                             }
 
                             break;
@@ -266,7 +272,6 @@ namespace PmdThing.Components.Networking
         public override void Cleanup()
         {
             Running = false;
-            Base.ComponentRegistered -= RegisterComponent;
             ShutdownTokenSrc.Cancel();
         }
     }
