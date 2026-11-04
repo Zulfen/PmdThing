@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using PmdThing.Core;
 using PmdThing.Core.Network;
 using PmdThing.Core.Network.Rokon;
+using PmdThing.Core.Util;
 
 namespace PmdThing.Components.Networking.Rokon
 {
@@ -34,6 +35,12 @@ namespace PmdThing.Components.Networking.Rokon
         public override void SendPacket(PmdPacket.PacketDto packet)
         {
             _server.SendPacket(packet, this);
+        }
+
+        public override void SignalReady()
+        {
+            base.SignalReady();
+            SubmitTask(() => _server.OnClientJoined(this), ProcessingOrder.Update);
         }
 
         public override void Cleanup()

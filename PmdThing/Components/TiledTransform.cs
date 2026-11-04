@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using GlmSharp;
 using PmdThing.Containers;
 using PmdThing.Core;
 using PmdThing.Core.Network.Rokon;
@@ -17,8 +18,8 @@ namespace PmdThing.Components
 
         private readonly Timer _timer;
 
-        private readonly PmdServerValue<PmdTileRef> _destination;
-
+        private vec2? _destination = null;
+        private readonly PmdServerValue<PmdTileRef> _destinationTile;
         public delegate Task AsyncDestinationChanged(PmdContainer? sender, DestinationEventArgs e);
         public event AsyncDestinationChanged? DestinationChanged;
 
@@ -39,7 +40,7 @@ namespace PmdThing.Components
 
         public TiledTransform(PmdComponentConfig config, int column, int row) : base(config, new PmdTileRef(row, column))
         {
-            _destination = new PmdServerValue<PmdTileRef>(this, new PmdTileRef(0, 0), ProcessingOrder.Update, true, true);
+            _destinationTile = new PmdServerValue<PmdTileRef>(this, new PmdTileRef(0, 0), ProcessingOrder.Update, true, true);
             CanMove = new PmdServerValue<bool>(this, true);
             Moving = new PmdServerValue<bool>(this, false);
             Speed = new PmdServerValue<float>(this, 2f);
@@ -51,9 +52,8 @@ namespace PmdThing.Components
 
             // TODO: Account for multiple tiled worlds
             _world = GetBaseContainer<TiledWorld>();
-            _timer = GetSharedComponent<Timer>();
 
-            _destination.Changed += InternalDestination_Changed;
+            _destinationTile.Changed += InternalDestination_Changed;
 
         }
 
@@ -66,8 +66,6 @@ namespace PmdThing.Components
                 if (DestinationChanged != null)
                 {
                     await DestinationChanged(GetParent(), eventArgs);
-
-                    //Debugger.Break();
 
                     if (eventArgs.ShouldMove)
                     {
@@ -95,7 +93,7 @@ namespace PmdThing.Components
         public void SetDestination(PmdTileRef tile)
         {
             FaceTowards(tile);
-            _destination.Set(tile);
+            _destinationTile.Set(tile);
         }
 
         /// <summary>
@@ -105,16 +103,16 @@ namespace PmdThing.Components
         /// <param name="speed">Speed at which to do so</param>
         private void MoveTo(PmdTileRef tile, float speed = 2f)
         {
-
+            Moving.Set(true);
             Speed.Set(speed);
-            Moving.Set(CanMove.Get());
 
             var destinationVector = _world
                 .GetWorldSpace(tile)
                 .ToVec2();
 
             // this sucks mega balls 
-            var timerId = Register<Timer>(true, out var timer, 50f, ProcessingOrder.Update);
+            // TODO: have it so tasks can cancel themselves?
+            var timerId = Register<Timer>(true, out var timer, 16.67f, ProcessingOrder.Update);
             timer.RegisterTask(() =>
             {
                 var pointVector = _transform.ToVec2();
@@ -124,13 +122,16 @@ namespace PmdThing.Components
                 if (distanceVector.Length <= step)
                 {
                     SetValue(tile);
-                }
-
-                if (CanMove.Get() && distanceVector.Length > 0)
+                } 
+                else if (CanMove.Get())
                 {
                     var unitPos = distanceVector / distanceVector.Length;
                     _transform.Set(pointVector + unitPos * step);
                     return;
+                }
+                else
+                {
+                    SetValue(tile);
                 }
 
                 Moving.Set(false);

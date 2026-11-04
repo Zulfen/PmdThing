@@ -131,11 +131,11 @@ namespace PmdThing.Components
 
             if (centered)
             {
-                destRect.X += (float)GetSpriteWidth() / 2;
-                destRect.Y += (float)GetSpriteHeight() / 2;
+                destRect.X += GetSpriteWidth() / 2f;
+                destRect.Y += GetSpriteHeight() / 2f;
             }
 
-            _spriteSheetImage.Draw(destRect, sourceRect, false);
+            _spriteSheetImage.Draw(destRect, sourceRect, centered);
         }
 
     }

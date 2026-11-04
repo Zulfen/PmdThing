@@ -13,7 +13,6 @@ namespace PmdThing.Components.Networking.QueryHandlers
         public override dynamic? Handle(dynamic? requestData, PmdContainerId? parentContainerId, IPmdServerConnection connection)
         {
             if (Server == null) return null;
-            connection.SignalReady();
 
             var count = 0;
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator(it looks ugly...)
@@ -49,6 +48,7 @@ namespace PmdThing.Components.Networking.QueryHandlers
             }
 
             Framework.Logger.LogDebug("Sent {count} components.", count);
+            connection.SignalReady();
 
             return null;
         }

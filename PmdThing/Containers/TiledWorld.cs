@@ -4,6 +4,7 @@ using PmdThing.Core;
 using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util;
 using System.Drawing;
+using DotTiled;
 
 namespace PmdThing.Containers
 {
@@ -43,8 +44,10 @@ namespace PmdThing.Containers
             var rows = await TileProvider.GetRows();
             var columns = await TileProvider.GetColumns();
 
-            _tileWidthSrc.SetResult(await TileProvider.GetTileWidth());
-            _tileHeightSrc.SetResult(await TileProvider.GetTileHeight());
+            var tileWidth = await TileProvider.GetTileWidth();
+            var tileHeight = await TileProvider.GetTileHeight();
+            _tileWidthSrc.SetResult(tileWidth);
+            _tileHeightSrc.SetResult(tileHeight);
 
             _tileIds = new int[rows, columns];
             for (var row = 0; row < rows; row++)
@@ -63,7 +66,7 @@ namespace PmdThing.Containers
 
             if (!_headless)
             {
-                _renderer?.SetData(rows, columns, imagePath);
+                _renderer?.SetData(rows, columns, tileWidth, tileHeight, imagePath);
             }
         }
 
@@ -99,11 +102,9 @@ namespace PmdThing.Containers
         public Point GetWorldSpace(PmdTileRef tile)
         {
             var tileWidth = _tileWidthSrc.Task
-                //.WaitAsync(TimeSpan.FromSeconds(5))
                 .Result;
 
             var tileHeight = _tileHeightSrc.Task
-                //.WaitAsync(TimeSpan.FromSeconds(5))
                 .Result;
 
             return new Point(

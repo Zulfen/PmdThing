@@ -10,7 +10,7 @@ namespace PmdThing.Core.Hardware.Input.SDL
         public event IPmdKeyboard.OnKey? KeyDown;
         public event IPmdKeyboard.OnKey? KeyUp;
 
-        private readonly Dictionary<SDL_Keycode, PmdKey> _sdlKeyMap = new()
+        private readonly Dictionary<SDL_Keycode, PmdKey> _pmdKeyMap = new()
         {
             { SDL_Keycode.SDLK_UP, PmdKey.UpArrow },
             { SDL_Keycode.SDLK_DOWN, PmdKey.DownArrow },
@@ -18,41 +18,42 @@ namespace PmdThing.Core.Hardware.Input.SDL
             { SDL_Keycode.SDLK_RIGHT, PmdKey.RightArrow },
         };
 
-        private readonly Dictionary<PmdKey, bool> _keyStateMap = new();
-
-        public SdlPmdKeyboard()
+        private readonly Dictionary<PmdKey, SDL_Scancode> _pmdScancodeMap = new()
         {
-            foreach (var pmdKey in _sdlKeyMap.Values)
-            {
-                _keyStateMap[pmdKey] = false;
-            }
-        }
+            { PmdKey.UpArrow, SDL_Scancode.SDL_SCANCODE_UP },
+            { PmdKey.DownArrow, SDL_Scancode.SDL_SCANCODE_DOWN },
+            { PmdKey.LeftArrow, SDL_Scancode.SDL_SCANCODE_LEFT },
+            { PmdKey.RightArrow, SDL_Scancode.SDL_SCANCODE_RIGHT },
+        };
 
         public bool IsKeyDown(PmdKey key)
         {
-            return _keyStateMap.TryGetValue(key, out var down) && down;
+            var keyStates = SDL_GetKeyboardState(null);
+            if (_pmdScancodeMap.TryGetValue(key, out var sdlKey))
+            {
+                return keyStates != null && keyStates[(int)sdlKey];
+            }
+            return false;
         }
-
 
         public void Poll(SDL_Event* eventPtr)
         {
 
-            var keyMapped = _sdlKeyMap.TryGetValue(eventPtr->key.key, out var key);
+            var keyMapped = _pmdKeyMap.TryGetValue(eventPtr->key.key, out var key);
             if (!keyMapped) return;
 
             // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
             switch (eventPtr->Type)
             {
                 case SDL_EVENT_KEY_DOWN:
-                    _keyStateMap[key] = true;
                     KeyDown?.Invoke(key);
                     break;
                 case SDL_EVENT_KEY_UP:
-                    _keyStateMap[key] = false;
                     KeyUp?.Invoke(key);
                     break;
             }
         }
 
+      
     }
 }

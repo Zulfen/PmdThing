@@ -7,7 +7,7 @@
 
         public bool IsKeyDown(PmdKey key)
         {
-            throw new NotImplementedException();
+            return false;
         }
     }
 }

@@ -28,6 +28,8 @@ namespace PmdThing.Core
         private static PmdGameBase? _instance;
         public readonly PmdFramework Framework;
 
+        private bool _headless;
+
         // TODO: add update / render sorting
         // TODO: maybe add a way to listen for another component to update
         // MovementController?
@@ -55,6 +57,9 @@ namespace PmdThing.Core
         {
             _instance = this;
             Framework = framework;
+            _headless = Framework.Graphics
+                .GetCapabilities()
+                .Headless;
 
             BaseContainer = new PmdMultiContainer(new PmdContainerConfig(this, Framework, null, 1));
             Init();
@@ -62,7 +67,7 @@ namespace PmdThing.Core
 
         private void Init()
         {
-            RegisterComponent<Components.Timer>(null, false, out _, (double)1000 / 30, ProcessingOrder.Update);
+            RegisterComponent<Components.Timer>(null, false, out _, 16.67f, ProcessingOrder.Update);
         }
 
         public static PmdGameBase Create(int width, int height, string title, string[] commandLineArgs)
@@ -370,6 +375,8 @@ namespace PmdThing.Core
                 {
                     mainThreadTask.Invoke();
                 }
+
+                if (_headless) continue;
 
                 Framework.Graphics.PreRender();
 

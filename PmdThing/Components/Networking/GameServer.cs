@@ -16,6 +16,7 @@ namespace PmdThing.Components.Networking
     {
 
         public event Action<TConn>? ClientConnected;
+        public event Action<TConn>? ClientJoined;
         public event Action<TAddr>? ClientDisconnected;
 
         private readonly Dictionary<TAddr, TConn> _connections = [];
@@ -92,9 +93,7 @@ namespace PmdThing.Components.Networking
                 _connectionIds.Add(connection, id);
 
                 Framework.Logger.LogInformation("Client connected: [{addr}]", endpoint);
-
-                Base.SubmitTask(() => ClientConnected?.Invoke(connection));
-
+                ClientConnected?.Invoke(connection);
 
                 foreach (var containerId in Base.BaseContainer.GetAllContainers())
                 {
@@ -106,6 +105,11 @@ namespace PmdThing.Components.Networking
                 }
 
             }
+        }
+
+        public void OnClientJoined(TConn connection)
+        {
+            ClientJoined?.Invoke(connection);
         }
 
         protected void OnClientDisconnect(TConn connection, TAddr endpoint)

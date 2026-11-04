@@ -22,7 +22,7 @@ namespace PmdThing.Components
             _timer.Enabled = true;
         }
 
-        private void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        private void Timer_Elapsed(object? sender, ElapsedEventArgs e)
         {
             Tick();
         }
@@ -38,6 +38,7 @@ namespace PmdThing.Components
         public void RegisterTask(Action task)
         {
             _callbacks.Add(task);
+            Tick();
         }
 
         public override void Cleanup()

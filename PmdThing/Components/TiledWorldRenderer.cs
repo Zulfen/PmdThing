@@ -34,7 +34,7 @@ namespace PmdThing.Components
                 "vertex");
         }
 
-        public void SetData(int rows, int columns, string imagePath)
+        public void SetData(int rows, int columns, int tileWidth, int tileHeight, string imagePath)
         {
             Rows = rows;
             Columns = columns;
@@ -47,8 +47,8 @@ namespace PmdThing.Components
                     true,
                     out SpriteSheet registeredSheet,
                     imagePath,
-                    Rows,
-                    Columns
+                    tileWidth,
+                    tileHeight
                 );
                 _tileSheet = registeredSheet;
 
@@ -82,7 +82,7 @@ namespace PmdThing.Components
                         X = screenSpaceX + ScreenCenter.x - Offset.x,
                         Y = screenSpaceY + ScreenCenter.y - Offset.y,
                         Width = _tileSheet?.GetSpriteWidth() ?? 0,
-                        Height = _tileSheet?.GetSpriteWidth() ?? 0,
+                        Height = _tileSheet?.GetSpriteHeight() ?? 0,
                     };
 
                     _tileSheet?.DrawSprite(textureRect, destRect);

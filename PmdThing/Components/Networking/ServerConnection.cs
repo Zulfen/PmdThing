@@ -27,7 +27,7 @@ namespace PmdThing.Components.Networking
 
         public abstract void SendPacket(PmdPacket.PacketDto packet);
 
-        public void SignalReady()
+        public virtual void SignalReady()
         {
             Ready = true;
         }

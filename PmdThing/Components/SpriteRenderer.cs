@@ -53,7 +53,7 @@ namespace PmdThing.Components
 
                 if (_spriteSheet != null)
                 {
-                    _spriteCenter = new vec2(_spriteSheet.GetSpriteWidth() / 2f, _spriteSheet.GetSpriteHeight() / 2f);
+                    _spriteCenter = new vec2(_spriteSheet.GetSpriteWidth() / 4f, _spriteSheet.GetSpriteHeight() / 4f);
                 }
             }
         }
