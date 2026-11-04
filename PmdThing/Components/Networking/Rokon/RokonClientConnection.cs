@@ -8,9 +8,11 @@ namespace PmdThing.Components.Networking.Rokon
 {
     public class RokonClientConnection : ClientConnection<IPAddress>
     {
-        private int _port;
+        private readonly int _port;
         private readonly IPAddress _ip;
         private Socket? _socket;
+
+        private bool _socketClosed;
 
         public RokonClientConnection(PmdComponentConfig config, string host, int port) : base(config)
         {
@@ -28,15 +30,18 @@ namespace PmdThing.Components.Networking.Rokon
                 try
                 {
                     _socket = new Socket(_ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
                     await _socket.ConnectAsync(_ip, _port);
+                    OnConnect();
 
                     var sendThread = new Thread(SendLoop);
                     var receiveThread = new Thread(ReceiveLoop);
+                    var processThread = new Thread(ProcessLoop);
 
                     sendThread.Start();
                     receiveThread.Start();
+                    processThread.Start();
 
-                    OnConnect();
                 }
                 catch (SocketException ex)
                 {
@@ -53,9 +58,14 @@ namespace PmdThing.Components.Networking.Rokon
 
         public override void Cleanup()
         {
-            _socket?.Shutdown(SocketShutdown.Both);
-            _socket?.Close();
-            base.Cleanup();
+            if (!_socketClosed)
+            {
+                base.Cleanup();
+                _socket?.Shutdown(SocketShutdown.Both);
+                _socket?.Close();
+
+                _socketClosed = true;
+            }
         }
 
         protected override byte[] ReceiveBytes()
@@ -64,12 +74,30 @@ namespace PmdThing.Components.Networking.Rokon
 
             try
             {
-                _socket?.Receive(buffer);
+                if (_socket?.Connected == true)
+                {
+                    var result = _socket.Receive(buffer);
+                    if (result > buffer.Length)
+                    {
+                        Framework.Logger.LogWarning("Received more data than buffer size from [{address}]", GetEndpoint());
+                    }
+
+                    if (result == 0)
+                    {
+                        _socketClosed = true;
+                        Cleanup();
+                    }
+
+                    var actualData = new byte[result];
+                    Array.Copy(buffer, actualData, result);
+                    return actualData;
+                }
+
             }
             catch (SocketException ex)
             {
                 Framework.Logger.LogDebug("Connection to [{address}] closed ({exception})", GetEndpoint(), ex.Message);
-                OnDisconnect();
+                Cleanup();
             }
 
             return buffer;
@@ -79,13 +107,22 @@ namespace PmdThing.Components.Networking.Rokon
         {
             try
             {
-                _socket?.Send(bytes);
+                if (_socket?.Connected == true)
+                {
+                    _socket?.Send(bytes);
+                }
+                
             }
             catch (SocketException ex)
             {
                 Framework.Logger.LogDebug("Connection to [{address}] closed ({exception})", GetEndpoint(), ex.Message);
-                OnDisconnect();
+                Cleanup();
             }
+        }
+
+        public override bool IsNetworkConnected()
+        {
+            return !(_socket?.Poll(1, SelectMode.SelectRead) == true && _socket?.Available == 0);
         }
     }
 }

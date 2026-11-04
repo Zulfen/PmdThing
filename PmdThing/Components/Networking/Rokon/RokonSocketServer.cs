@@ -1,7 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using PmdThing.Core;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection.Metadata.Ecma335;
 
 namespace PmdThing.Components.Networking.Rokon
 {
@@ -19,8 +21,9 @@ namespace PmdThing.Components.Networking.Rokon
             var localEndPoint = new IPEndPoint(ipAddr, _port);
 
             _serverSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            _serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             _serverSocket.Bind(localEndPoint);
-            _serverSocket.Listen();
+ 
 
             var acceptThread = new Thread(AcceptConnLoop)
             {
@@ -37,23 +40,36 @@ namespace PmdThing.Components.Networking.Rokon
             {
                 try
                 {
+
+                    _serverSocket.Listen(10);
                     var socket = _serverSocket.Accept();
 
-                    Register<RokonServerConnection>(false, out var connection, socket);
-                    OnClientConnected(connection);
+                    var id = Register<RokonServerConnection>(true, out var connection, socket);
+                    OnClientConnected(connection, id);
 
-                    var receiveThread = new Thread(() => ReceiveLoop(connection));
-                    var sendThread = new Thread(() => SendLoop(connection));
+                    var processThread = new Thread(() => ProcessLoop(connection))
+                    {
+                        Name = $"Process ({socket.RemoteEndPoint})"
+                    };
+                    var sendThread = new Thread(() => SendLoop(connection))
+                    {
+                        Name = $"Send ({socket.RemoteEndPoint})"
+                    };
+                    var receiveThread = new Thread(() => ReceiveLoop(connection))
+                    {
+                        Name = $"Receive ({socket.RemoteEndPoint})"
+                    };
 
-                    receiveThread.Start();
+                    processThread.Start();
                     sendThread.Start();
+                    receiveThread.Start();
 
                 }
                 catch (SocketException ex)
                 {
                     Framework.Logger.LogDebug("Listening loop threw error: ({exception})", ex.Message);
                 }
-               
+
             }
         }
 
@@ -65,16 +81,22 @@ namespace PmdThing.Components.Networking.Rokon
             {
                 if (connection.Running)
                 {
-                    connection.Socket.Receive(buffer);
+                    var result = connection.Socket.Receive(buffer);
+                    if (result == 0) connection.Cleanup();
+
+                    var actualData = new byte[result];
+                    Array.Copy(buffer, actualData, result);
+                    return actualData;
                 }
             }
             catch (SocketException ex)
             {
                 Framework.Logger.LogDebug("Connection to [{address}:{port}] closed ({exception})", connection.GetEndpoint(), _port, ex.Message);
-                OnClientDisconnect(connection.GetEndpoint());
+                connection.Cleanup();
             }
-            
+
             return buffer;
+
         }
 
         protected override void SendBytes(RokonServerConnection connection, byte[] bytes)
@@ -84,12 +106,12 @@ namespace PmdThing.Components.Networking.Rokon
                 if (connection.Running)
                 {
                     connection.Socket.Send(bytes);
-                }   
+                }
             }
             catch (SocketException ex)
             {
                 Framework.Logger.LogDebug("Connection to [{address}:{port}] closed ({exception})", connection.GetEndpoint(), _port, ex.Message);
-                OnClientDisconnect(connection.GetEndpoint());
+                connection.Cleanup();
             }
         }
 

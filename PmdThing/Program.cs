@@ -23,7 +23,7 @@ public class Program
         RokonClientConnection? client = null;
         if (headless)
         {
-            game.RegisterComponent<RokonSocketServer>(game.BaseContainer, true, out server, 2312);
+            game.RegisterComponent<RokonSocketServer>(game.BaseContainer, false, out server, 2312);
             var tmxLoader = new TmxTileProvider(@"TileSets\142map.tmx");
             game.RegisterContainer<TiledWorld>(out _,tmxLoader);
 

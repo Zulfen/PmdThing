@@ -96,9 +96,17 @@ namespace PmdThing.Containers
 
         public vec2 GetWorldSpace(PmdTileRef tile)
         {
+            var tileWidth = _tileWidthSrc.Task
+                //.WaitAsync(TimeSpan.FromSeconds(5))
+                .Result;
+
+            var tileHeight = _tileHeightSrc.Task
+                //.WaitAsync(TimeSpan.FromSeconds(5))
+                .Result;
+
             return new vec2(
-                tile.Column * _tileWidthSrc.Task.Result * SpriteSheet.SpriteScale,
-                tile.Row * _tileHeightSrc.Task.Result * SpriteSheet.SpriteScale
+                tile.Column * tileWidth * SpriteSheet.SpriteScale,
+                tile.Row * tileHeight * SpriteSheet.SpriteScale
             );
         }
 

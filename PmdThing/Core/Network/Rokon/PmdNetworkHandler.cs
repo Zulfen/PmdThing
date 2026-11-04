@@ -75,7 +75,8 @@ namespace PmdThing.Core.Network.Rokon
                     PmdPacketType = PmdPacketType.UpdateComponent,
                     DataType = componentType.BaseType?.GenericTypeArguments[0],
                     Source = packetSource,
-                    Attribute = tagEntry.Tag
+                    Attribute = tagEntry.Tag,
+                    ParentContainer = parent.Id
                 };
 
                 var changedEvent = componentType.GetEvent("Changed");

@@ -15,7 +15,6 @@ namespace PmdThing.Components
         [PmdServerSync]
         public PmdListenableValue<PmdConstants.AnimationDirection> Direction;
 
-        [PmdServerSync]
         private readonly Transform _transform;
         private readonly TiledWorld _world;
 
@@ -39,7 +38,7 @@ namespace PmdThing.Components
             Direction = new PmdListenableValue<PmdConstants.AnimationDirection>(this,
                 PmdConstants.AnimationDirection.South);
 
-            RegisterSyncedIfNotExist(true, "transform", out _transform, 0, 0);
+            RegisterIfNotExist(true, out _transform, 0, 0);
 
             // TODO: Account for multiple tiled worlds
             _world = GetBaseContainer<TiledWorld>();

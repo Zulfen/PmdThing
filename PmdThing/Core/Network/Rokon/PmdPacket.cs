@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
+using System.Reflection;
 using System.Text.Json;
 using PmdThing.Core.Util;
 
@@ -100,7 +101,7 @@ public struct PmdPacket()
         
     }
 
-    private static bool TypeCheck(Type type, bool isComponent)
+    private static bool TypeCheck(Type type, bool isComponent)  
     {
         return type.IsPrimitive ||
                type.IsValueType ||
@@ -122,6 +123,11 @@ public struct PmdPacket()
 
     public static PacketDto? Decode(byte[] packetBytes)
     {
+        if (packetBytes.Length == 0)
+        {
+            return null;
+        }
+        
         if (packetBytes[0] == 0)
         {
             return null;

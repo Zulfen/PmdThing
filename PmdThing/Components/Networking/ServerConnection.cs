@@ -6,7 +6,11 @@ namespace PmdThing.Components.Networking
 {
     public abstract class ServerConnection<TAddr>(PmdComponentConfig config) : PmdComponent(config)
     {
-        public BlockingCollection<PmdPacket.PacketDto> Queue { get; } = [];
+        public BlockingCollection<PmdPacket.PacketDto> SendQueue { get; } = [];
+        public BlockingCollection<PmdPacket.PacketDto> ReceiveQueue { get; } = [];
+
+        public readonly CancellationTokenSource ShutdownTokenSrc = new();
+
         public abstract TAddr? GetEndpoint();
 
         private long _running = 1;
@@ -19,6 +23,7 @@ namespace PmdThing.Components.Networking
         public override void Cleanup()
         {
             Running = false;
+            ShutdownTokenSrc.Cancel();
         }
     }
 }

@@ -3,12 +3,14 @@ using PmdThing.Containers;
 using PmdThing.Core;
 using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
+using System.Net;
 using System.Reflection;
-using PmdComponentId = System.Int32;
 using PmdContainerId = System.Int32;
+using PmdComponentId = System.Int32;
 
 namespace PmdThing.Components.Networking
 {
+    // TODO: make this a container
     public abstract class GameServer<TAddr, TConn> : PmdNetworkHandler where TAddr : notnull where TConn : ServerConnection<TAddr>
     {
 
@@ -18,7 +20,8 @@ namespace PmdThing.Components.Networking
         private readonly Dictionary<TAddr, TConn> _connections = [];
         private readonly Dictionary<QueryType, QueryHandler> _queryHandlers = [];
 
-        private Dictionary<PmdContainerId, PmdPacket.PacketDto> _containerTracker = [];
+        private readonly Dictionary<PmdContainerId, PmdPacket.PacketDto> _containerTracker = [];
+        private readonly Dictionary<TConn, PmdComponentId> _connectionIds = [];
 
         protected readonly CancellationTokenSource ShutdownTokenSrc = new();
 
@@ -33,8 +36,20 @@ namespace PmdThing.Components.Networking
         protected GameServer(PmdComponentConfig config) : base(config, typeof(PmdServerSync), PmdPacketSource.Server)
         {
             Base.BaseContainer.ContainerRegistered += RegisterContainer;
-
+            ClientConnected += GameServer_ClientConnected;
             Instance = this;
+        }
+
+        private void GameServer_ClientConnected(TConn connection)
+        {
+            foreach (var id in Base.BaseContainer.GetAllContainers())
+            {
+                if (_containerTracker.TryGetValue(id, out var packet))
+                {
+                    connection.SendQueue.TryAdd(packet);
+                    Framework.Logger.LogDebug("Sending container update ({type}) ({action}) to client: [{addr}]", packet.Type, packet.PmdPacketType, connection.GetEndpoint());
+                }
+            }
         }
 
         private void RegisterContainer(PmdContainerId id, PmdContainer container, object[]? arguments)
@@ -71,37 +86,30 @@ namespace PmdThing.Components.Networking
             _queryHandlers.Add(type, handler);
         }
 
-        protected void OnClientConnected(TConn connection)
+        protected void OnClientConnected(TConn connection, PmdComponentId id)
         {
             var endpoint = connection.GetEndpoint();
 
             if (endpoint != null)
             {
                 _connections.Add(endpoint, connection);
+                _connectionIds.Add(connection, id);
+
                 Framework.Logger.LogInformation("Client connected: [{addr}]", endpoint);
 
                 SubmitTask(() => ClientConnected?.Invoke(connection), ProcessingOrder.Update);
-
-                foreach (var id in Base.BaseContainer.GetAllContainers())
-                {
-                    if (_containerTracker.TryGetValue(id, out var packet))
-                    {
-                        connection.Queue.Add(packet, ShutdownTokenSrc.Token);
-                    }
-                }
 
                 SubmitTask(() => Base.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Eevee, false), ProcessingOrder.Update);
             }
         }
 
-        protected void OnClientDisconnect(TAddr address)
+        protected void OnClientDisconnect(TConn connection, TAddr endpoint)
         {
-            _connections.Remove(address, out var connection);
-            connection?.Cleanup();
+            _connections.Remove(endpoint);
+            DeregisterParent<TConn>(_connectionIds[connection], true);
 
-            Framework.Logger.LogInformation("Client disconnected: [{addr}]", address);
-
-            SubmitTask(() => ClientDisconnected?.Invoke(address), ProcessingOrder.Update);
+            Framework.Logger.LogInformation("Client disconnected: [{addr}]", endpoint);
+            SubmitTask(() => ClientDisconnected?.Invoke(endpoint), ProcessingOrder.Update);
         }
 
         private void UpdateListenableValue(PmdContainerId parentId, string tag, string fieldName, object data)
@@ -142,11 +150,11 @@ namespace PmdThing.Components.Networking
         {
             foreach (var connection in _connections.Values)
             {
-                connection.Queue.Add(packetDto, ShutdownTokenSrc.Token);
+                connection.SendQueue.TryAdd(packetDto);
             }
         }
 
-        private static void SendQueryResponse(TConn connection, PmdPacket.PacketDto reqPacket, dynamic? response)
+        private void SendQueryResponse(TConn connection, PmdPacket.PacketDto reqPacket, dynamic? response)
         {
             PmdPacket.PacketDto packetDto;
             if (response == null)
@@ -165,7 +173,9 @@ namespace PmdThing.Components.Networking
                 };
             }
 
-            connection.Queue.Add(packetDto);
+            Framework.Logger.LogDebug("Sending query response ({type}) to [{addr}]", packetDto.DataType, connection.GetEndpoint());
+
+            connection.SendQueue.TryAdd(packetDto);
         }
 
         /// <summary>
@@ -179,12 +189,36 @@ namespace PmdThing.Components.Networking
                 try
                 {
                     var packet = PmdPacket.Decode(packetBytes);
-                    if (packet == null || (!PmdPacket.ValidPacket(packet) && packet.PmdPacketType != PmdPacketType.Query))
+                    if (packet == null)
                     {
-                        Framework.Logger.LogWarning("Client [{addr}] sent an invalid packet", connection.GetEndpoint());
-                        Disconnect(connection);
                         continue;
-                    }
+                    }   
+                    connection.ReceiveQueue.TryAdd(packet);
+
+                }
+                catch (Exception ex)
+                {
+                    Framework.Logger.LogError("Error ({exception}) whilst trying to decode packet from {address}", ex.Message, connection.GetEndpoint());
+                    Framework.Logger.LogError("{stacktrace}", ex.StackTrace);
+
+                    connection.Cleanup();
+                }
+
+            }
+        }
+
+        /// <summary>
+        /// Note: start this in another thread
+        /// </summary>
+        public void ProcessLoop(TConn connection)
+        {
+            while (Running && connection.Running)
+            {
+
+                try
+                {
+
+                    var packet = connection.ReceiveQueue.Take(connection.ShutdownTokenSrc.Token);
 
                     switch (packet.PmdPacketType)
                     {
@@ -194,7 +228,7 @@ namespace PmdThing.Components.Networking
                             {
                                 if (packet.Data == null || packet.Data.Length < 2 || packet.ParentContainer == null)
                                 {
-                                    Disconnect(connection);
+                                    connection.Cleanup();
                                     continue;
                                 }
 
@@ -202,9 +236,9 @@ namespace PmdThing.Components.Networking
                             }
                             else if (PmdTypeUtils.IsGenericClass(packet.Type, typeof(PmdListenableComponent<>)))
                             {
-                                if (packet.ParentContainer == null || packet.Attribute == null)
+                                if (packet.Attribute == null || packet.ParentContainer == null)          
                                 {
-                                    Disconnect(connection);
+                                    connection.Cleanup();
                                     continue;
                                 }
 
@@ -241,7 +275,6 @@ namespace PmdThing.Components.Networking
 
                         case PmdPacketType.Query:
 
-                            if (packet.Attribute == null) break;
                             if (Enum.TryParse(packet.Attribute, out QueryType reqType))
                             {
                                 if (_queryHandlers.TryGetValue(reqType, out var handler))
@@ -249,6 +282,14 @@ namespace PmdThing.Components.Networking
                                     var response = handler.Handle(packet.Data![0]);
                                     SendQueryResponse(connection, packet, response);
                                 }
+                                else
+                                {
+                                    throw new InvalidDataException();
+                                }
+                            }
+                            else
+                            {
+                                throw new InvalidDataException("Invalid query type");
                             }
 
                             break;
@@ -258,30 +299,30 @@ namespace PmdThing.Components.Networking
                         default:
                             throw new NotImplementedException(packet.PmdPacketType.ToString());
                     }
+
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {
-                    Framework.Logger.LogError("Error ({exception}) whilst trying to decode packet from {address}", ex.Message, connection.GetEndpoint());
+                    Framework.Logger.LogError("Error ({exception}) whilst trying to process packet from {address}", ex.Message, connection.GetEndpoint());
                     Framework.Logger.LogError("{stacktrace}", ex.StackTrace);
-
-                    Disconnect(connection);
+                    connection.Cleanup();
                 }
 
             }
         }
 
-        private void Disconnect(TConn connection)
+        public void Disconnect(TConn connection)
         {
             connection.Running = false;
 
             var endpoint = connection.GetEndpoint();
             if (endpoint != null)
             {
-                if (_connections.Remove(endpoint))
-                {
-                    connection.Cleanup();
-                    OnClientDisconnect(endpoint);
-                }
+                OnClientDisconnect(connection, endpoint);
             }
         }
 
@@ -292,11 +333,18 @@ namespace PmdThing.Components.Networking
         {
             while (Running && connection.Running)
             {
-                var packet = connection.Queue.Take(ShutdownTokenSrc.Token);
-                if (packet.Data == null) continue;
+                try
+                {
+                    var packet = connection.SendQueue.Take(connection.ShutdownTokenSrc.Token);
+                    if (packet == null) throw new InvalidOperationException();
 
-                var packetBytes = PmdPacket.Encode(packet);
-                SendBytes(connection, packetBytes);
+                    var packetBytes = PmdPacket.Encode(packet);
+                    SendBytes(connection, packetBytes);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
         }
 
