@@ -1,5 +1,7 @@
 ﻿using DotTiled;
 using PmdThing.Components;
+using PmdThing.Components.Networking;
+using PmdThing.Components.Networking.QueryHandlers;
 using PmdThing.Components.Networking.Rokon;
 using PmdThing.Containers;
 using PmdThing.Core;
@@ -10,35 +12,48 @@ public class Program
 
     public static void Main(string[] args)
     {
-        var server = new Thread(() => Server(args));
-        server.Start();
-    }
+        var game = PmdGameBase.Create(1280, 720, "ksjdfnsfklm;dsk", args);
 
-    private static void Server(string[] commandLineArgs)
-    {
-        var game = PmdGameBase.Create(1280, 720, "ksjdfnsfklm;dsk", commandLineArgs);
-        game.RegisterComponent<RokonSocketServer>(game.BaseContainer, true, out var server, 2312);
+        var headless = game.Framework
+            .Graphics
+            .GetCapabilities()
+            .Headless;
+
+        RokonSocketServer? server = null;
+        RokonClientConnection? client = null;
+        if (headless)
+        {
+            game.RegisterComponent<RokonSocketServer>(game.BaseContainer, true, out server, 2312);
+            var tmxLoader = new TmxTileProvider(@"TileSets\142map.tmx");
+            game.RegisterContainer<TiledWorld>(out _,tmxLoader);
+
+            game.RegisterComponent<TileQuery>(game.BaseContainer, true, out var tileQueryHandler);
+            server.RegisterHandler(QueryType.Tile, tileQueryHandler);
+        }
+        else
+        {
+            game.RegisterComponent<RokonClientConnection>(game.BaseContainer, false, out client, "localhost", 2312);
+            game.RegisterComponent<RokonTileProvider>(game.BaseContainer, true, out var networkLoader);
+            game.RegisterContainer<TiledWorld>(out var tiledGame, networkLoader);
+        }
+        
 
         // Make a generic shared container. Was going to do this in GameBase but decided not to.
         // TODO: Maybe removed the shared components feature and enforce passing around components from a main container like thi
 
-        var tmxLoader = new TmxTileProvider(@"TileSets\142map.tmx");
-        game.RegisterContainer<TiledWorld>(out var tiledGame, tmxLoader);
+        
 
-        if (!game.Framework
-                .Graphics
-                .GetCapabilities()
-                .Headless)
+        if (!headless)
         {
             game.RegisterComponent<Camera>(game.BaseContainer, false, out _);
         }
-        
 
         game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Vulpix, true);
         game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Eevee, false);
 
         game.Start();
-        server.Cleanup();
+        server?.Cleanup();
+        client?.Cleanup();
 
         Console.Write("saturn was here");
     }

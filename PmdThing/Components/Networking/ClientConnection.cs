@@ -7,58 +7,56 @@ using PmdComponentId = System.Int32;
 
 namespace PmdThing.Components.Networking
 {
-    public abstract class ClientConnection<TAddr> : PmdNetworkComponent where TAddr : notnull
+    public abstract class ClientConnection<TAddr> : PmdNetworkHandler where TAddr : notnull
     {
 
-        public event Action? Connected;
-        public event Action? Disconnected;
+        public event Action? Connect;
+        public event Action? Disconnect;
         private readonly BlockingCollection<PmdPacket.PacketDto> _sendQueue = [];
 
-        private readonly Dictionary<QueryType, QueryHandler> _queryHandlers = [];
+        private readonly Dictionary<PmdComponentId, TaskCompletionSource<dynamic?>> _queries = [];
 
-        private readonly Dictionary<PmdComponentId, TaskCompletionSource<dynamic>> _queries = [];
         protected readonly CancellationTokenSource ShutdownTokenSrc = new();
 
+        public bool Connected { get; protected set; }
+
         private long _running = 1;
+
+        protected ClientConnection(PmdComponentConfig config) : base(config, typeof(PmdClientSync), PmdPacketSource.Client)
+        {
+            Instance = this;
+        }
+
         public bool Running
         {
             get => Interlocked.Read(ref _running) == 1;
             set => Interlocked.Exchange(ref _running, Convert.ToInt64(value));
         }
 
-        protected ClientConnection(PmdComponentConfig config) : base(config, typeof(PmdClientSync), PmdPacketSource.Client)
-        {
-            Base.ComponentRegistered += RegisterComponent;
-        }
-
         protected abstract void SendBytes(byte[] bytes);
         protected abstract byte[] ReceiveBytes();
 
-        protected void RegisterHandler(QueryType type, QueryHandler handler)
-        {
-            _queryHandlers.Add(type, handler);
-        }
-
         protected void OnConnect()
         {
+            Connected = true;
             var endpoint = GetEndpoint();
 
             Framework.Logger.LogInformation("Client connected: [{addr}]", endpoint);
 
-            SubmitTask(() => Connected?.Invoke(), ProcessingOrder.Update);
+            SubmitTask(() => Connect?.Invoke(), ProcessingOrder.Update);
         }
 
         protected void OnDisconnect()
         {
-            Framework.Logger.LogInformation("Disconnected from server");
+            Framework.Logger.LogInformation("Disconnect from server");
 
-            SubmitTask(() => Disconnected?.Invoke(), ProcessingOrder.Update);
-            Cleanup();
+            SubmitTask(() => Disconnect?.Invoke(), ProcessingOrder.Update);
         }
 
-        private void UpdateListenableValue(PmdComponentId componentId, string fieldName, object data)
+        private void UpdateListenableValue(string tag, string fieldName, object data)
         {
-            var component = GetOtherComponent(componentId);
+            var id = GetIdForTag(tag);
+            var component = GetOtherComponent(id);
 
             var setMethod = component.GetType()
                 .GetField(fieldName)?
@@ -69,9 +67,11 @@ namespace PmdThing.Components.Networking
             setMethod?.Invoke(component, [data]);
         }
 
-        private void UpdateListenableComponent(PmdComponentId componentId, object data)
+        private void UpdateListenableComponent(string tag, object data)
         {
-            var component = GetOtherComponent(componentId);
+            var id = GetIdForTag(tag);
+
+            var component = GetOtherComponent(id);
             var value = component.GetType().GetProperty("ComponentValue");
 
             value?.SetValue(component, data);
@@ -79,11 +79,13 @@ namespace PmdThing.Components.Networking
 
         public override void ListenableValueChanged(dynamic current, dynamic previous, PmdPacket.PacketDto packetDto)
         {
-            if (!current.Equals(previous))
-            {
-                packetDto.Data = [current];
-                _sendQueue.Add(packetDto, ShutdownTokenSrc.Token);
-            }
+            var tag = GetTagForId(packetDto.Id);
+
+            packetDto.Data = [current, tag];
+            _sendQueue.Add(packetDto, ShutdownTokenSrc.Token);
+
+            Framework.Logger.LogDebug("Listenable value [{type}] updated ({attribute}", packetDto.Id,
+                    packetDto.Attribute);
         }
 
         /// <summary>
@@ -97,7 +99,7 @@ namespace PmdThing.Components.Networking
                 try
                 {
                     var packet = PmdPacket.Decode(packetBytes);
-                    if (!PmdPacket.ValidPacket(packet))
+                    if (!PmdPacket.ValidPacket(packet) && packet.PmdPacketType != PmdPacketType.Query)
                     {
                         Framework.Logger.LogWarning("Server sent an invalid packet. Dropping connection.");
                         Cleanup();
@@ -108,13 +110,20 @@ namespace PmdThing.Components.Networking
                     {
                         case PmdPacketType.UpdateComponent:
 
-                            if (packet.Type == typeof(PmdListenableValue<>) && packet.Attribute != null)
+                            if (IsGenericClass(packet.Type, typeof(PmdListenableValue<>)) && packet.Attribute != null)
                             {
-                                SubmitTask(() => UpdateListenableValue(packet.Id, packet.Attribute, packet.Data![0]), ProcessingOrder.Update);
+                                if (packet.Data == null || packet.Data.Length < 2)
+                                {
+                                    Framework.Logger.LogWarning("Server [{addr}] sent an invalid update packet. Dropping connection.", GetEndpoint());
+                                    Cleanup();
+                                    continue;
+                                }
+
+                                SubmitTask(() => UpdateListenableValue((string)packet.Data![1], packet.Attribute, packet.Data![0]), ProcessingOrder.Update);
                             }
-                            else if (packet.Type == typeof(PmdListenableComponent<>))
+                            else if (IsGenericClass(packet.Type, typeof(PmdListenableComponent<>)))
                             {
-                                SubmitTask(() => UpdateListenableComponent(packet.Id, packet.Data![0]), ProcessingOrder.Update);
+                                SubmitTask(() => UpdateListenableComponent(packet.Attribute!, packet.Data![0]), ProcessingOrder.Update);
                             }
 
                             break;
@@ -147,11 +156,32 @@ namespace PmdThing.Components.Networking
 
                             if (_queries.TryGetValue(packet.Id, out var responseTask))
                             {
-                                responseTask.SetResult(packet.Data![0]);
+                                responseTask.SetResult(packet.Data!.Length == 0 ? null : packet.Data![0]);
                             }
 
                             break;
 
+                        case PmdPacketType.AddContainer:
+
+                            if (packet.Type.IsSubclassOf(typeof(PmdContainer)))
+                            {
+                                if (packet.ParentContainer.HasValue)
+                                {
+                                    var parentContainer = Base.GetContainer(packet.ParentContainer.Value);
+                                    if (parentContainer is PmdMultiContainer multiContainer)
+                                    {
+                                        SubmitTask(() => multiContainer.RegisterContainer(packet.Id, packet.Type, out _, packet.Data!), ProcessingOrder.Update);
+                                    }
+                                }
+                                else
+                                {
+                                    SubmitTask(() => Base.RegisterContainer(packet.Id, packet.Type, packet.Data!), ProcessingOrder.Update);
+                                }
+                            }
+
+                            break;
+
+                        case PmdPacketType.DeleteContainer:
                         default:
                             throw new NotImplementedException();
                     }
@@ -160,6 +190,8 @@ namespace PmdThing.Components.Networking
                 {
                     Framework.Logger.LogError("Error ({exception}) whilst trying to decode packet from {address}", ex.Message, GetEndpoint());
                     Framework.Logger.LogError("{stacktrace}", ex.StackTrace);
+
+                    Cleanup();
                 }
 
             }
@@ -172,53 +204,61 @@ namespace PmdThing.Components.Networking
         {
             while (Running)
             {
-                var packet = _sendQueue.Take(ShutdownTokenSrc.Token);
-                if (packet.Data == null) continue;
+                try
+                {
 
-                var packetBytes = PmdPacket.Encode(packet.Type, packet.Data, packet.Id, packet.PmdPacketType, packet.Unique, packet.Attribute, packet.DataType, PmdPacketSource.Client);
-                SendBytes(packetBytes);
+                    var packet = _sendQueue.Take(ShutdownTokenSrc.Token);
+                    if (packet.Data == null) continue;
+
+                    var packetBytes = PmdPacket.Encode(packet);
+                    SendBytes(packetBytes);
+
+                } 
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                
             }
         }
 
-        public async Task<T> SendQuery<T>(QueryType type, object data) where T : notnull
+        public async Task<T?> SendQuery<T>(QueryType type, object data) where T : notnull
         {
-            if (_queryHandlers.TryGetValue(type, out var handler))
+
+            var packetDto = new PmdPacket.PacketDto
             {
-                if (data.GetType() != handler.GetDataType())
-                {
-                    throw new ArgumentException(
-                        $"Handler for {type} only accepts instances of {handler.GetDataType()}");
-                }
+                Attribute = type.ToString(),
+                Data = [data],
+                DataType = data.GetType(),
+                Type = data.GetType(),
+                PmdPacketType = PmdPacketType.Query,
+                Unique = true,
+                Id = Random.Shared.Next(),
+                Source = PmdPacketSource.Client
+            };
 
-                var packetDto = new PmdPacket.PacketDto
-                {
-                    Attribute = type.ToString(),
-                    Data = [data],
-                    DataType = data.GetType(),
-                    PmdPacketType = PmdPacketType.Query,
-                    Type = handler.GetDataType(),
-                    Unique = true,
-                    Id = Random.Shared.Next(),
-                    Source = PmdPacketSource.Client
-                };
+            var responseTask = new TaskCompletionSource<dynamic?>();
 
-                var responseTask = new TaskCompletionSource<object>();
-
-                _queries.Add(packetDto.Id, responseTask);
+            _queries.Add(packetDto.Id, responseTask);
+            try
+            {
                 _sendQueue.Add(packetDto, ShutdownTokenSrc.Token);
-
-                if (await responseTask.Task is T response)
-                {
-                    _queries.Remove(packetDto.Id);
-                    return response;
-                }
-                else
-                {
-                    throw new InvalidCastException();
-                }
+            }
+            catch (OperationCanceledException)
+            {
+                return default;
             }
 
-            throw new ArgumentException("No handler found for the specified query type.");
+            Framework.Logger.LogDebug("Sent query [{type}] with data [{data}]", type, data);
+
+            if (await responseTask.Task is T response)
+            {
+                _queries.Remove(packetDto.Id);
+                return response;
+            }
+
+            return default;
+
         }
 
         public abstract TAddr GetEndpoint();

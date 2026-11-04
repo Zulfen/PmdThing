@@ -19,6 +19,8 @@ namespace PmdThing.Components.Networking.Rokon
 
         public override void Cleanup()
         {
+            base.Cleanup();
+            Socket.Shutdown(SocketShutdown.Both);
             Socket.Close();
         }
 

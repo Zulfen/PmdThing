@@ -1,4 +1,6 @@
-﻿using PmdThing.Core.Hardware.Framework;
+﻿using PmdThing.Components.Networking.Rokon;
+using PmdThing.Core.Hardware.Framework;
+using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
 using PmdThing.Core.Util.Structures;
 using PmdComponentId = System.Int32;
@@ -6,11 +8,13 @@ using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core
 {
-    public class PmdContainer(PmdGameBase game, PmdFramework framework)
+    public class PmdContainer(PmdGameBase game, PmdFramework framework, PmdContainer? parent)
     {
 
         protected readonly PmdGameBase Base = game;
         protected readonly PmdFramework Framework = framework;
+        public readonly PmdContainer? Parent = parent;
+
         private readonly PmdComponentRegistry _localTypes = new();
 
         private readonly Dictionary<Type, PmdContainerId> _properties = new();
@@ -87,6 +91,18 @@ namespace PmdThing.Core
         {
             var id = Base.RegisterComponent(unique ? this : null, unique, out instance, arguments);
             _localTypes.Add(typeof(TComponent), id);
+            return id;
+        }
+
+        public PmdComponentId RegisterSyncedComponent<TComponent>(bool unique,
+            out TComponent instance, 
+            string tag,
+            params object[] arguments) where TComponent : PmdComponent
+        {
+            var id = RegisterComponent<TComponent>(unique, out var component, arguments);
+            instance = component;
+
+            PmdNetworkHandler.Instance?.RegisterSyncedComponent(id, tag);
             return id;
         }
 

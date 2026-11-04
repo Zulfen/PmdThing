@@ -9,12 +9,14 @@ namespace PmdThing.Components.Networking.Rokon
     {
 
         private readonly Socket _serverSocket;
+        private readonly int _port;
 
         public RokonSocketServer(PmdComponentConfig config, int port) : base(config)
         {
-            var ipHost = Dns.GetHostEntry(Dns.GetHostName());
+            _port = port;
+            var ipHost = Dns.GetHostEntry("localhost");
             var ipAddr = ipHost.AddressList[0];
-            var localEndPoint = new IPEndPoint(ipAddr, port);
+            var localEndPoint = new IPEndPoint(ipAddr, _port);
 
             _serverSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             _serverSocket.Bind(localEndPoint);
@@ -61,11 +63,14 @@ namespace PmdThing.Components.Networking.Rokon
 
             try
             {
-                connection.Socket.Receive(buffer);
+                if (connection.Running)
+                {
+                    connection.Socket.Receive(buffer);
+                }
             }
             catch (SocketException ex)
             {
-                Framework.Logger.LogDebug("Connection to [{address}] closed ({exception})", connection.GetEndpoint(), ex.Message);
+                Framework.Logger.LogDebug("Connection to [{address}:{port}] closed ({exception})", connection.GetEndpoint(), _port, ex.Message);
                 OnClientDisconnect(connection.GetEndpoint());
             }
             
@@ -76,11 +81,14 @@ namespace PmdThing.Components.Networking.Rokon
         {
             try
             {
-                connection.Socket.Send(bytes);
+                if (connection.Running)
+                {
+                    connection.Socket.Send(bytes);
+                }   
             }
             catch (SocketException ex)
             {
-                Framework.Logger.LogDebug("Connection to [{address}] closed ({exception})", connection.GetEndpoint(), ex.Message);
+                Framework.Logger.LogDebug("Connection to [{address}:{port}] closed ({exception})", connection.GetEndpoint(), _port, ex.Message);
                 OnClientDisconnect(connection.GetEndpoint());
             }
         }
@@ -88,6 +96,7 @@ namespace PmdThing.Components.Networking.Rokon
         public override void Cleanup()
         {
             base.Cleanup();
+            _serverSocket.Shutdown(SocketShutdown.Both);
             _serverSocket.Close();
         }
     }

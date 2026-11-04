@@ -126,6 +126,8 @@ namespace PmdThing.Core
             params object[] arguments)
         {
 
+            var targetContainer = container ?? BaseContainer;
+
             var fullParams = new object[arguments.Length + 1];
             arguments.CopyTo(fullParams, 1);
 
@@ -133,7 +135,7 @@ namespace PmdThing.Core
             {
                 Base = this,
                 Framework = Framework,
-                Parent = container ?? BaseContainer,
+                Parent = targetContainer,
             };
 
             fullParams[0] = componentConfig;
@@ -221,6 +223,11 @@ namespace PmdThing.Core
         public TContainer GetContainer<TContainer>(PmdContainerId id) where TContainer : PmdContainer
         {
             return BaseContainer.GetContainer<TContainer>(id);
+        }
+
+        public PmdContainer GetContainer(PmdContainerId id)
+        {
+            return BaseContainer.GetContainer(id);
         }
 
         public TContainer GetFirstContainer<TContainer>() where TContainer : PmdContainer

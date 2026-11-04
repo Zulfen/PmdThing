@@ -13,7 +13,7 @@ namespace PmdThing.Components.Networking.Rokon
 
         public RokonTileProvider(PmdComponentConfig config) : base(config)
         {
-            _client = GetParentComponent<RokonClientConnection>();
+            _client = GetSharedComponent<RokonClientConnection>();
         }
 
         public async Task<string> GetImagePath()
@@ -22,7 +22,9 @@ namespace PmdThing.Components.Networking.Rokon
             {
                 Type = TileQuery.RequestType.Path
             };
-            return await _client.SendQuery<string>(QueryType.Tile, request);
+            var path = await _client.SendQuery<string>(QueryType.Tile, request);
+
+            return path ?? throw new InvalidOperationException("Received null path from Rokon server.");
         }
 
         public async Task<RectangleF> GetSheetLocation(int row, int column)

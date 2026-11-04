@@ -136,7 +136,6 @@ namespace PmdThing.Components
 
         public override void Render()
         {
-
             var spritePosition = _transform.IsTarget
                 ? _worldRenderer.ScreenCenter - _spriteCenter
                 : _worldRenderer.ScreenCenter - _spriteCenter - _worldRenderer.Offset + _transform.ComponentValue;

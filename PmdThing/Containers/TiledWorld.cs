@@ -13,14 +13,14 @@ namespace PmdThing.Containers
         // container lookup
         private int[,] _tileIds = new int[0,0];
         public IPmdTileProvider TileProvider { get; init; }
-        private readonly TiledWorldRenderer _renderer;
+        private readonly TiledWorldRenderer? _renderer;
 
         private readonly bool _headless;
 
         private readonly TaskCompletionSource<int> _tileWidthSrc = new();
         private readonly TaskCompletionSource<int> _tileHeightSrc = new();
 
-        public TiledWorld(PmdGameBase game, PmdFramework framework, IPmdTileProvider tileProvider) : base(game, framework)
+        public TiledWorld(PmdGameBase game, PmdFramework framework, PmdContainer? parent, IPmdTileProvider tileProvider) : base(game, framework, parent)
         {
             TileProvider = tileProvider;
             AsyncInit = true;
@@ -31,7 +31,8 @@ namespace PmdThing.Containers
 
             if (!_headless)
             {
-                RegisterComponent(true, out _renderer);
+                RegisterComponent<TiledWorldRenderer>(true, out var renderer);
+                _renderer = renderer;
             }
         }
 
@@ -49,6 +50,10 @@ namespace PmdThing.Containers
                 for (var column = 0; column < columns; column++)
                 {
                     _tileIds[row, column] = RegisterEmptyContainer(out _);
+
+                    var tile = GetTileAt(row, column);
+                    var imageRect = await TileProvider.GetSheetLocation(row, column);
+                    tile?.RegisterProperty(imageRect);
                 }
             }
 
@@ -56,7 +61,7 @@ namespace PmdThing.Containers
 
             if (!_headless)
             {
-                await _renderer.SetData(rows, columns, imagePath);
+                _renderer?.SetData(rows, columns, imagePath);
             }
         }
 

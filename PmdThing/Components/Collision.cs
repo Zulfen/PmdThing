@@ -4,6 +4,7 @@ using PmdThing.Core.Util;
 
 namespace PmdThing.Components
 {
+
     public class Collision : PmdComponent
     {
 

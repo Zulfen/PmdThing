@@ -5,6 +5,8 @@
         AddComponent,
         RemoveComponent,
         UpdateComponent,
-        Query
+        Query,
+        AddContainer,
+        DeleteContainer,
     }
 }

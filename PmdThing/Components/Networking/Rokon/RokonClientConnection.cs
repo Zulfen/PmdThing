@@ -8,25 +8,42 @@ namespace PmdThing.Components.Networking.Rokon
 {
     public class RokonClientConnection : ClientConnection<IPAddress>
     {
-
+        private int _port;
         private readonly IPAddress _ip;
-        private readonly Socket _socket;
+        private Socket? _socket;
 
         public RokonClientConnection(PmdComponentConfig config, string host, int port) : base(config)
         {
+            AsyncInit = true;
+            _port = port;
+
             var ipHostInfo = Dns.GetHostEntry(host);
             _ip = ipHostInfo.AddressList[0];
+        }
 
-            _socket = new Socket(_ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            _socket.Connect(_ip, port);
+        public override async Task Init()
+        {
+            while (!Connected)
+            {
+                try
+                {
+                    _socket = new Socket(_ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                    await _socket.ConnectAsync(_ip, _port);
 
-            var sendThread = new Thread(SendLoop);
-            var receiveThread = new Thread(ReceiveLoop);
+                    var sendThread = new Thread(SendLoop);
+                    var receiveThread = new Thread(ReceiveLoop);
 
-            sendThread.Start();
-            receiveThread.Start();
+                    sendThread.Start();
+                    receiveThread.Start();
 
-            OnConnect();
+                    OnConnect();
+                }
+                catch (SocketException ex)
+                {
+                    Framework.Logger.LogWarning("Failed to connect to [{address}:{port}]: {exception}", GetEndpoint(), _port, ex.Message);
+                }
+            }
+           
         }
 
         public override IPAddress GetEndpoint()
@@ -36,7 +53,8 @@ namespace PmdThing.Components.Networking.Rokon
 
         public override void Cleanup()
         {
-            _socket.Close();
+            _socket?.Shutdown(SocketShutdown.Both);
+            _socket?.Close();
             base.Cleanup();
         }
 
@@ -46,7 +64,7 @@ namespace PmdThing.Components.Networking.Rokon
 
             try
             {
-                _socket.Receive(buffer);
+                _socket?.Receive(buffer);
             }
             catch (SocketException ex)
             {
@@ -61,7 +79,7 @@ namespace PmdThing.Components.Networking.Rokon
         {
             try
             {
-                _socket.Send(bytes);
+                _socket?.Send(bytes);
             }
             catch (SocketException ex)
             {

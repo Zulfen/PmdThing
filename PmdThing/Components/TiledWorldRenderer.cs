@@ -34,7 +34,7 @@ namespace PmdThing.Components
                 "vertex");
         }
 
-        public async Task SetData(int rows, int columns, string imagePath)
+        public void SetData(int rows, int columns, string imagePath)
         {
             Rows = rows;
             Columns = columns;
@@ -53,17 +53,6 @@ namespace PmdThing.Components
                 _tileSheet = registeredSheet;
 
             }, ProcessingOrder.Update);
-            
-            // link all tiles to sprite sheet
-            for (var row = 0; row < Rows; row++)
-            {
-                for (var column = 0; column < Columns; column++)
-                {
-                    var tile = ParentContainer.GetTileAt(row, column);
-                    var imageRect = await ParentContainer.TileProvider.GetSheetLocation(row, column);
-                    tile?.RegisterProperty(imageRect);
-                }
-            }
         }
 
         public void Camera_OffsetChanged(vec2 currentPos, vec2 prevPos)

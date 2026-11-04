@@ -8,5 +8,17 @@ namespace PmdThing.Components.Networking
     {
         public BlockingCollection<PmdPacket.PacketDto> Queue { get; } = [];
         public abstract TAddr? GetEndpoint();
+
+        private long _running = 1;
+        public bool Running
+        {
+            get => Interlocked.Read(ref _running) == 1;
+            protected set => Interlocked.Exchange(ref _running, Convert.ToInt64(value));
+        }
+
+        public override void Cleanup()
+        {
+            Running = false;
+        }
     }
 }

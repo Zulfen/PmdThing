@@ -7,6 +7,7 @@ using PmdThing.Core.Util;
 namespace PmdThing.Components
 {
     [PmdServerSync]
+    [PmdClientSync]
     public class TiledTransform : PmdListenableComponent<PmdTileRef>
     {
 

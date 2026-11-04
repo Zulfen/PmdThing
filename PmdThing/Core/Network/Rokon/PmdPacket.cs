@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Reflection;
+using System.Text.Json;
 using PmdThing.Core.Util;
 
 namespace PmdThing.Core.Network.Rokon;
@@ -15,6 +16,7 @@ public struct PmdPacket()
         public required Type Type;
         public PmdPacketType PmdPacketType;
         public int Id;
+        public int? ParentContainer;
         public bool Unique;
         public string? Attribute;
         public Type? DataType;
@@ -52,6 +54,9 @@ public struct PmdPacket()
     [Key(9)]
     public required PmdPacketSource Source;
 
+    [Key(10)]
+    public int? ParentContainer;
+
     // https://stackoverflow.com/a/15020402
 
     public static bool ValidPacket(PacketDto packet)
@@ -59,57 +64,70 @@ public struct PmdPacket()
         return packet.Data is { Length: > 0 };
     }
 
-    public static byte[] Encode(Type componentType, object[] values, int componentId, PmdPacketType type, bool unique, string? field, Type? dataType, PmdPacketSource source)
+    public static byte[] Encode(PacketDto packetDto)
     {
-        if (!TypeCheck(componentType, true))
+        if (!TypeCheck(packetDto.Type, true))
         {
             throw new ArgumentException("Not allowed");
         }
 
-        if (dataType != null)
+        if (packetDto.DataType != null)
         {
-            if (!TypeCheck(dataType, true))
+            if (!TypeCheck(packetDto.DataType, true))
             {
                 throw new ArgumentException("Not allowed");
             }
         }
 
-        var componentName = componentType.FullName ?? componentType.Name;
-        var dataName = dataType?.FullName ?? dataType?.Name;
+        var componentName = packetDto.Type.FullName ?? packetDto.Type.Name;
+        var dataName = packetDto.DataType?.FullName ?? packetDto.DataType?.Name;
 
         var packet = new PmdPacket
         {
-            Type = type,
-            ComponentId = componentId,
+            Type = packetDto.PmdPacketType,
+            ComponentId = packetDto.Id,
             ComponentType = componentName,
-            Data = JsonSerializer.Serialize(values),
-            Attribute = field,
-            Unique = unique,
+            Data = packetDto.DataType != null ? JsonSerializer.Serialize(packetDto.Data![0], packetDto.DataType) : JsonSerializer.Serialize(packetDto.Data),
+            Attribute = packetDto.Attribute,
+            Unique = packetDto.Unique,
             DataType = dataName,
-            Source = source
+            Source = packetDto.Source,
+            ParentContainer = packetDto.ParentContainer
         };
 
+       
         return MessagePackSerializer.Serialize(packet);
+        
     }
 
     private static bool TypeCheck(Type type, bool isComponent)
     {
-        return type.IsPrimitive || type.IsValueType || (isComponent && type.IsSubclassOf(typeof(PmdListenableComponent<>))) || type == typeof(PmdListenableValue<>);
+        return type.IsPrimitive ||
+               type.IsValueType ||
+               type.IsDefined(typeof(PmdClientSync)) ||
+               type.IsDefined(typeof(PmdServerSync)) ||
+               type == typeof(PmdListenableValue<>) ||
+               type.IsDefined(typeof(PmdSerializable)) ||
+               type == typeof(string);
     }
 
-    public static byte[] Encode(Type componentType, object value, int componentId, PmdPacketType type, bool unique, string? field, Type? dataType, PmdPacketSource source)
+    private static Type? FindType(string fullName)
     {
-        return Encode(componentType, [value], componentId, type, unique, field, dataType, source);
+        return AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a => !a.IsDynamic)
+                .SelectMany(a => a.GetTypes())
+                .FirstOrDefault(t => t.FullName == fullName);
     }
+
 
     public static PacketDto Decode(byte[] packetBytes)
     {
-        var options = MessagePackSerializerOptions.Standard
-            .WithSecurity(MessagePackSecurity.UntrustedData);
+        //var options = MessagePackSerializerOptions.Standard
+            //.WithSecurity(MessagePackSecurity.UntrustedData);
 
-        var packet = MessagePackSerializer.Deserialize<PmdPacket>(packetBytes, options);
+        var packet = MessagePackSerializer.Deserialize<PmdPacket>(packetBytes);
 
-        var componentType = System.Type.GetType(packet.ComponentType);
+        var componentType = FindType(packet.ComponentType);
         if (componentType == null) throw new InvalidDataException($"Could not find component type {packet.ComponentType}");
 
         if (!TypeCheck(componentType, true))
@@ -120,8 +138,8 @@ public struct PmdPacket()
         Type? dataType = null;
         if (packet.DataType != null)
         {
-            dataType = System.Type.GetType(packet.DataType);
-            if (dataType == null) throw new InvalidDataException($"Could not find data type {packet.ComponentType}");
+            dataType = FindType(packet.DataType);
+            if (dataType == null) throw new InvalidDataException($"Could not find data type {packet.DataType}");
 
             if (!TypeCheck(dataType, true))
             {
@@ -132,6 +150,7 @@ public struct PmdPacket()
         var packetDto = new PacketDto
         {
             Id = packet.ComponentId,
+            ParentContainer = packet.ParentContainer,
             Type = componentType,
             PmdPacketType = packet.Type,
             Attribute = packet.Attribute,

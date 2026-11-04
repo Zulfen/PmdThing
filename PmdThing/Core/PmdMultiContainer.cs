@@ -1,19 +1,17 @@
 ﻿using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util.Structures;
-using System.ComponentModel;
-using System.Xml;
-using System.Xml.Linq;
 using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core
 {
-    public class PmdMultiContainer(PmdGameBase game, PmdFramework framework) : PmdContainer(game, framework)
+    public class PmdMultiContainer(PmdGameBase game, PmdFramework framework, PmdContainer? parent) : PmdContainer(game, framework, parent)
     {
-
         private readonly PmdContainerRegistry _containerRegistry = new();
 
         private PmdContainerId _containerCounter;
         private readonly Dictionary<PmdContainerId, PmdContainer> _runtimeContainers = new();
+
+        public event Action<PmdContainerId, PmdContainer, object[]?>? ContainerRegistered;
 
 
         public PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, out PmdContainer instance, params object[]? arguments)
@@ -21,15 +19,16 @@ namespace PmdThing.Core
             object[] completeArgs;
             if (arguments != null)
             {
-                completeArgs = new object[arguments.Length + 2];
+                completeArgs = new object[arguments.Length + 3];
                 completeArgs[0] = Base;
-                completeArgs[1] = framework;
+                completeArgs[1] = Framework;
+                completeArgs[2] = this;
 
-                arguments.CopyTo(completeArgs, 2);
+                arguments.CopyTo(completeArgs, 3);
             }
             else
             {
-                completeArgs = [Base, framework];
+                completeArgs = [Base, Framework, this];
             }
             
             var containerInstance = Activator.CreateInstance(containerType, completeArgs);
@@ -46,6 +45,8 @@ namespace PmdThing.Core
 
                 _containerRegistry.Add(containerType, newId);
                 _runtimeContainers.Add(newId, instance);
+
+                ContainerRegistered?.Invoke(newId, instance, arguments);
 
                 return newId;
             }

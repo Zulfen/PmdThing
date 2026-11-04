@@ -1,6 +1,8 @@
 ﻿using System.ComponentModel;
+using System.Drawing;
 using PmdThing.Containers;
 using PmdThing.Core;
+using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
 
 namespace PmdThing.Components.Networking.QueryHandlers
@@ -8,6 +10,7 @@ namespace PmdThing.Components.Networking.QueryHandlers
     public class TileQuery : QueryHandler
     {
 
+        [PmdSerializable]
         public record TileRequest
         {
             public RequestType Type { get; set; }
@@ -46,7 +49,8 @@ namespace PmdThing.Components.Networking.QueryHandlers
 
                     if (requestData.Tile != null)
                     {
-                        return _tiledWorld.GetTileAt(requestData.Tile);
+                        PmdContainer? tileContainer = _tiledWorld.GetTileAt(requestData.Tile);
+                        return tileContainer.GetProperty<RectangleF>();
                     }
 
                     break;
@@ -55,18 +59,22 @@ namespace PmdThing.Components.Networking.QueryHandlers
 
                     if (requestData.Tile != null)
                     {
-                        return _tiledWorld.TileProvider.CollisionCheck(requestData.Tile.Row, requestData.Tile.Column);
+                        return _tiledWorld.TileProvider
+                            .CollisionCheck(requestData.Tile.Row, requestData.Tile.Column)
+                            .Result;
                     }
                     break;
 
                 case RequestType.TileWidth:
-                    return _tiledWorld.TileProvider.GetTileWidth();
+                    return _tiledWorld.TileProvider.GetTileWidth().Result;
                 case RequestType.TileHeight:
-                    return _tiledWorld.TileProvider.GetTileHeight();
+                    return _tiledWorld.TileProvider.GetTileHeight().Result;
                 case RequestType.Rows:
-                    return _tiledWorld.TileProvider.GetRows();
+                    return _tiledWorld.TileProvider.GetRows().Result;
                 case RequestType.Columns:
-                    return _tiledWorld.TileProvider.GetColumns();
+                    return _tiledWorld.TileProvider.GetColumns().Result;
+                case RequestType.Path:
+                    return _tiledWorld.TileProvider.GetImagePath().Result;
                 default:
                     throw new InvalidEnumArgumentException();
             }

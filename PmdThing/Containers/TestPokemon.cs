@@ -4,11 +4,13 @@ using PmdThing.Components.Graphics.OpenGL;
 using PmdThing.Core;
 using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Hardware.Graphics;
+using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
 using static PmdThing.Core.Util.PmdConstants;
 
 namespace PmdThing.Containers
 {
+
     public class TestPokemon : PmdContainer
     {
 
@@ -18,7 +20,7 @@ namespace PmdThing.Containers
         private readonly bool _player;
         private readonly Pokemon _pokemon;
 
-        public TestPokemon(PmdGameBase game, PmdFramework framework, Pokemon pokemon, bool player) : base(game, framework)
+        public TestPokemon(PmdGameBase game, PmdFramework framework, PmdContainer? parent, int id, Pokemon pokemon, bool player) : base(game, framework, parent)
         {
             var capabilities = Framework.Graphics.GetCapabilities();
 
@@ -28,16 +30,17 @@ namespace PmdThing.Containers
 
             if (capabilities.Api == PmdGraphics.HardwareApi.OpenGl)
             {
-                RegisterComponent<GlShader>(true, out var glShader,
+                RegisterComponent<GlShader>(true,
                     @"Core\Hardware\Graphics\Shaders\Vertex\shader.vert",
                     @"Core\Hardware\Graphics\Shaders\Fragment\shader.frag",
                     "vertex");
             }
 
-            RegisterComponent
+            RegisterSyncedComponent
             (
                 true,
                 out _tiledTransform,
+                "",
                 0,
                 0
             );

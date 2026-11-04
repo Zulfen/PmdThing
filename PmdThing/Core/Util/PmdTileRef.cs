@@ -1,7 +1,10 @@
 ﻿using GlmSharp;
+using PmdThing.Core.Network.Rokon;
 
 namespace PmdThing.Core.Util
 {
+
+    [PmdSerializable]
     public record PmdTileRef(int Row, int Column)
     {
         public int Row { get; } = Row;
