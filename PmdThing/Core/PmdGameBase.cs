@@ -24,7 +24,7 @@ namespace PmdThing.Core
         }
 
         private static PmdGameBase? _instance;
-        private readonly PmdFramework _framework;
+        public readonly PmdFramework Framework;
 
         // TODO: add update / render sorting
         // TODO: maybe add a way to listen for another component to update
@@ -47,9 +47,9 @@ namespace PmdThing.Core
         public PmdGameBase(PmdFramework framework)
         {
             _instance = this;
-            _framework = framework;
+            Framework = framework;
 
-            BaseContainer = new PmdMultiContainer();
+            BaseContainer = new PmdMultiContainer(this, Framework);
             Init();
         }
 
@@ -125,6 +125,8 @@ namespace PmdThing.Core
 
             var componentConfig = new PmdComponentConfig
             {
+                Base = this,
+                Framework = Framework,
                 Parent = container ?? BaseContainer,
             };
 
@@ -236,16 +238,16 @@ namespace PmdThing.Core
 
         public void Shutdown()
         {
-            _framework.Running = false;
+            Framework.Running = false;
         }
 
         public void MainLoop()
         {
 
-            while (_framework.Running)
+            while (Framework.Running)
             {
-                _framework.Graphics.PreUpdate();
-                _framework.Update();
+                Framework.Graphics.PreUpdate();
+                Framework.Update();
 
 
                 // Done to modify the collection of components whilst not iterating over them
@@ -281,7 +283,7 @@ namespace PmdThing.Core
 
                 }
 
-                _framework.Graphics.PreRender();
+                Framework.Graphics.PreRender();
 
                 foreach (var component in _processList)
                 {
@@ -297,7 +299,7 @@ namespace PmdThing.Core
                 }
 
 
-                _framework.Graphics.PostRender();
+                Framework.Graphics.PostRender();
 
             }
 

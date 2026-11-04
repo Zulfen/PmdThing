@@ -18,14 +18,14 @@ namespace PmdThing.Core.Hardware.Graphics
         public record Capabilities
         {
             public required HardwareApi Api;
-            public required string ApiVersion;
+            public required bool Headless;
+            public string? ApiVersion;
             public required bool Passed;
             public string? FailureReason;
             public bool HardwareTransformations; // e.g. if things like camera position are handled by passing it to a shader
         }
 
         public abstract PmdImage LoadImage(PmdComponent parent, string path);
-        public abstract void DrawRectangle(RectangleF rect);
         public abstract float GetDelta();
         public abstract PmdWindow GetMainWindow();
         public abstract PmdWindow CreateWindow(int width, int height);

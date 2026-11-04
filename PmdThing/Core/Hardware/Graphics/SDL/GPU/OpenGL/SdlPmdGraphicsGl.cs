@@ -75,6 +75,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
         {
             return new Capabilities
             {
+                Headless = false,
                 Api = HardwareApi.OpenGl,
                 ApiVersion = GL.GetString(StringName.Version),
                 FailureReason = SDL_GetError(),

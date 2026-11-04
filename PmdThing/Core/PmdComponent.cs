@@ -25,8 +25,8 @@ namespace PmdThing.Core
         private readonly ConcurrentQueue<Action> _updateTasks = new();
         private readonly ConcurrentQueue<Action> _renderTasks = new();
 
-        protected readonly PmdGameBase Base = PmdGameBase.GetInstance();
-        protected readonly PmdFramework Framework = PmdFrameworkFactory.GetInstance();
+        protected readonly PmdGameBase Base = config.Base;
+        protected readonly PmdFramework Framework = config.Framework;
 
         public int CompareTo(PmdComponent? other)
         {

@@ -22,7 +22,7 @@ namespace PmdThing.Core.Hardware.Framework
             Graphics = sdlGraphics;
             Keyboard = keyboard;
 
-            Serilog.ILogger serilogLogger = new LoggerConfiguration()
+            var serilogLogger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .WriteTo.Console(
                     outputTemplate: "{Timestamp:HH:mm:ss} {Level:u4}: {Message:lj}{NewLine}{Exception}"

@@ -3,9 +3,8 @@ using PmdThing.Core;
 
 namespace PmdThing.Components.Networking
 {
-    public abstract class ServerConnection(PmdComponentConfig config) : PmdComponent(config)
+    public abstract class ServerConnection<TAddr>(PmdComponentConfig config) : PmdComponent(config)
     {
-        public abstract EndPoint? GetEndpoint();
-
+        public abstract TAddr? GetEndpoint();
     }
 }

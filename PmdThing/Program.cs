@@ -1,4 +1,5 @@
 ﻿using PmdThing.Components;
+using PmdThing.Components.Networking.Rokon;
 using PmdThing.Containers;
 using PmdThing.Core;
 using PmdThing.Core.Util;
@@ -8,6 +9,12 @@ public class Program
 
     public static void Main(string[] args)
     {
+        var server = new Thread(Server);
+        server.Start();
+    }
+
+    private static void Server()
+    {
         var game = PmdGameBase.Create(1280, 720, "ksjdfnsfklm;dsk");
 
         // Make a generic shared container. Was going to do this in GameBase but decided not to.
@@ -16,16 +23,17 @@ public class Program
         var tmxLoader = new TmxTileProvider(@"C:\Users\Joshua Passmore\source\repos\PmdThing\PmdThing\TileSets\142map.tmx");
         game.RegisterContainer<TiledWorld>(out var tiledGame, tmxLoader);
 
-        game.RegisterComponent<Camera>(game.BaseContainer,false, out _);
+        game.RegisterComponent<Camera>(game.BaseContainer, false, out _);
 
         game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Vulpix, true);
         game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Eevee, false);
 
+        game.RegisterComponent<RokonSocketServer>(game.BaseContainer, true, out var server, 2312);
+
         game.Start();
+        server.Cleanup();
 
         Console.Write("saturn was here");
-
-
     }
 
 }

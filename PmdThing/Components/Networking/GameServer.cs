@@ -1,32 +1,33 @@
-﻿using PmdThing.Core;
+﻿using Microsoft.Extensions.Logging;
+using PmdThing.Core;
 using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
 using System.Collections.Concurrent;
-using System.Net;
 using System.Reflection;
 using PmdComponentId = System.Int32;
 
 namespace PmdThing.Components.Networking
 {
-    public abstract class GameServer<TAddr, TConn> : PmdComponent where TAddr : notnull where TConn : ServerConnection
+    public abstract class GameServer<TAddr, TConn> : PmdComponent where TAddr : notnull where TConn : ServerConnection<TAddr>
     {
 
         protected class ListenableHandler(GameServer<TAddr, TConn> server, PmdPacket.PacketDto packetDto)
         {
+            // ReSharper disable once UnusedMember.Global
             public void Changed(object current, object previous)
             {
                 server.ListenableValueChanged(current, previous, packetDto);
             }
         }
 
-        public event Action<TAddr>? ClientConnected;
+        public event Action<TConn>? ClientConnected;
         public event Action<TAddr>? ClientDisconnected;
 
-        protected readonly Dictionary<TAddr, TConn> Connections = [];
+        private readonly Dictionary<TAddr, TConn> _connections = [];
+        protected readonly CancellationTokenSource ShutdownTokenSrc = new();
 
         private readonly BlockingCollection<PmdPacket.PacketDto> _globalQueue = [];
-        private readonly CancellationTokenSource _shutdown = new();
-
+        
         private long _running = 1;
         public bool Running
         {
@@ -36,8 +37,6 @@ namespace PmdThing.Components.Networking
 
         protected GameServer(PmdComponentConfig config) : base(config)
         {
-            ClientConnected += GameServer_ClientConnected;
-            ClientDisconnected += GameServer_ClientDisconnected;
             Base.ComponentRegistered += RegisterComponent;
         }
 
@@ -89,16 +88,27 @@ namespace PmdThing.Components.Networking
             }
         }
 
-        protected void GameServer_ClientConnected(TAddr address)
+        protected void OnClientConnected(TConn connection)
         {
-            Register<TConn>(true, out var connection, address);
-            Connections.Add(address, connection);
+            var endpoint = connection.GetEndpoint();
+
+            if (endpoint != null)
+            {
+                _connections.Add(endpoint, connection);
+                Framework.Logger.LogInformation("Client connected: [{addr}]", endpoint);
+
+                SubmitTask(() => ClientConnected?.Invoke(connection), ProcessingOrder.Update);
+            }
         }
 
-        protected void GameServer_ClientDisconnected(TAddr address)
+        protected void OnClientDisconnect(TAddr address)
         {
-            Connections.Remove(address, out var connection);
+            _connections.Remove(address, out var connection);
             connection?.Cleanup();
+
+            Framework.Logger.LogInformation("Client disconnected: [{addr}]", address);
+
+            SubmitTask(() => ClientDisconnected?.Invoke(address), ProcessingOrder.Update);
         }
 
         private void UpdateListenableValue(PmdComponentId componentId, string fieldName, object data)
@@ -124,10 +134,11 @@ namespace PmdThing.Components.Networking
 
         private void ListenableValueChanged(object current, object previous, PmdPacket.PacketDto packetDto)
         {
-            if (current.Equals(previous)) return;
-
-            packetDto.Data = [current];
-            _globalQueue.Add(packetDto, _shutdown.Token);
+            if (!current.Equals(previous))
+            {
+                packetDto.Data = [current];
+                _globalQueue.Add(packetDto, ShutdownTokenSrc.Token);
+            }
         }
 
         /// <summary>
@@ -181,7 +192,8 @@ namespace PmdThing.Components.Networking
                 }
                 catch (Exception ex)
                 {
-                    //Framework.Logger.LogError("Error whilst trying to decode packet  );
+                    Framework.Logger.LogError("Error ({exception}) whilst trying to decode packet from {address}", ex.Message, connection.GetEndpoint());
+                    Framework.Logger.LogError("{stacktrace}", ex.StackTrace);
                 }
 
             }
@@ -194,7 +206,7 @@ namespace PmdThing.Components.Networking
         {
             while (Running)
             {
-                var packet = _globalQueue.Take(_shutdown.Token);
+                var packet = _globalQueue.Take(ShutdownTokenSrc.Token);
                 if (packet.Data == null) continue;
 
                 var packetBytes = PmdPacket.Encode(packet.Type, packet.Data, packet.Id, packet.PacketType, packet.Unique, packet.Field);
@@ -206,8 +218,7 @@ namespace PmdThing.Components.Networking
         {
             Running = false;
             Base.ComponentRegistered -= RegisterComponent;
-            _shutdown.Cancel();
+            ShutdownTokenSrc.Cancel();
         }
-
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using PmdThing.Components;
 using PmdThing.Core;
+using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util;
 
 namespace PmdThing.Containers
@@ -14,7 +15,7 @@ namespace PmdThing.Containers
 
         public IPmdTileProvider TileProvider { get; init; }
 
-        public TiledWorld(IPmdTileProvider tileProvider)
+        public TiledWorld(PmdGameBase game, PmdFramework framework, IPmdTileProvider tileProvider) : base(game, framework) 
         {
             TileProvider = tileProvider;
 

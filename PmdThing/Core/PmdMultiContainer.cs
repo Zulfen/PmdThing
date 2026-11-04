@@ -1,9 +1,10 @@
 ﻿using PmdContainerId = System.Int32;
 using PmdThing.Core.Util.Structures;
+using PmdThing.Core.Hardware.Framework;
 
 namespace PmdThing.Core
 {
-    public class PmdMultiContainer : PmdContainer
+    public class PmdMultiContainer(PmdGameBase game, PmdFramework framework) : PmdContainer(game, framework)
     {
 
         private readonly PmdContainerRegistry _containerRegistry = new();
@@ -19,8 +20,21 @@ namespace PmdThing.Core
 
         public PmdContainerId RegisterContainer<TContainer>(out TContainer instance, params object[]? arguments) where TContainer : PmdContainer
         {
+            object[] completeArgs;
+            if (arguments != null)
+            {
+                completeArgs = new object[arguments.Length + 2];
+                completeArgs[0] = Base;
+                completeArgs[1] = framework;
 
-            var containerInstance = Activator.CreateInstance(typeof(TContainer), arguments);
+                arguments.CopyTo(completeArgs, 2);
+            }
+            else
+            {
+                completeArgs = [Base, framework];
+            }
+            
+            var containerInstance = Activator.CreateInstance(typeof(TContainer), completeArgs);
             if (containerInstance is TContainer container)
             {
                 instance = container;

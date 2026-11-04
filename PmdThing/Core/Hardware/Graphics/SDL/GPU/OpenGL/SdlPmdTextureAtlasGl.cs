@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using OpenTK.Graphics.OpenGL;
-using RectpackSharp;
 using SDL;
 using System.Drawing;
 using static SDL.SDL3;

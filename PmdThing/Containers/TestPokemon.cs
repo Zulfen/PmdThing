@@ -1,11 +1,10 @@
-﻿using DotTiled;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using PmdThing.Components;
 using PmdThing.Components.Graphics.OpenGL;
 using PmdThing.Core;
+using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util;
 using static PmdThing.Core.Util.PmdConstants;
-using DrawOrder = PmdThing.Components.Graphics.DrawOrder;
 
 namespace PmdThing.Containers
 {
@@ -15,10 +14,10 @@ namespace PmdThing.Containers
         private readonly SpriteRenderer _renderer;
         private readonly TiledTransform _tiledTransform;
 
-        private bool _player;
-        private Pokemon _pokemon;
+        private readonly bool _player;
+        private readonly Pokemon _pokemon;
 
-        public TestPokemon(Pokemon pokemon, bool player)
+        public TestPokemon(PmdGameBase game, PmdFramework framework, Pokemon pokemon, bool player) : base(game, framework)
         {
             _player = player;
             _pokemon = pokemon;

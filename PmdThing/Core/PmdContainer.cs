@@ -6,11 +6,11 @@ using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core
 {
-    public class PmdContainer
+    public class PmdContainer(PmdGameBase game, PmdFramework framework)
     {
 
-        protected readonly PmdGameBase Base = PmdGameBase.GetInstance();
-        protected readonly PmdFramework Framework = PmdFrameworkFactory.GetInstance();
+        protected readonly PmdGameBase Base = game;
+        protected readonly PmdFramework Framework = framework;
         private readonly PmdComponentRegistry _localTypes = new();
 
         private readonly Dictionary<Type, PmdContainerId> _properties = new();
@@ -58,10 +58,10 @@ namespace PmdThing.Core
 
         public PmdComponentId RegisterComponent<TComponent>(bool unique, params object[] arguments) where TComponent : PmdComponent
         {
-            return RegisterComponent(typeof(TComponent), unique, arguments);
+            return RegisterComponent(null, typeof(TComponent), unique, arguments);
         }
 
-        public PmdComponentId RegisterComponent(PmdComponentId id, Type componentType, bool unique, params object[] arguments)
+        public PmdComponentId RegisterComponent(PmdComponentId? id, Type componentType, bool unique, params object[] arguments)
         {
             var returnedId = Base.RegisterComponent(id, componentType, this, unique, out _, arguments);
             _localTypes.Add(componentType, returnedId);
@@ -108,7 +108,7 @@ namespace PmdThing.Core
         {
             var registered = ComponentExists(typeof(TComponent), unique);
 
-            var id = registered ? _localTypes.GetFirst(typeof(TComponent)) : RegisterComponent<TComponent>(unique, null, arguments);
+            var id = registered ? _localTypes.GetFirst(typeof(TComponent)) : RegisterComponent<TComponent>(unique, arguments);
             return id;
         }
 
@@ -124,11 +124,13 @@ namespace PmdThing.Core
             // Probably a nicer way to do this.
             var config = new PmdComponentConfig
             {
+                Framework = Framework,
+                Base = Base,
                 Parent = this,
             };
 
             var listenableComponent = new PmdListenableComponent<T>(config, value);
-            var id = Base.RegisterComponent(listenableComponent, unique);
+            var id = Base.RegisterComponent(null, listenableComponent, unique);
 
             _properties.Add(typeof(T), id);
             _localTypes.Add(listenableComponent.GetType(), id);

@@ -1,6 +1,5 @@
 ﻿using System.Drawing;
 using PmdThing.Core.Util;
-using RectpackSharp;
 
 namespace PmdThing.Core.Hardware.Graphics
 {

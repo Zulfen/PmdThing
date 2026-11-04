@@ -1,7 +1,5 @@
-﻿using PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL;
+﻿using PmdThing.Core.Hardware.Graphics.SDL.Software;
 using SDL;
-using System.Drawing;
-using PmdThing.Core.Hardware.Graphics.SDL.Software;
 using static SDL.SDL3;
 
 namespace PmdThing.Core.Hardware.Graphics.SDL
@@ -33,10 +31,6 @@ namespace PmdThing.Core.Hardware.Graphics.SDL
 
         public override void PostRender()
         {
-            SDL_SetRenderDrawColor(_renderer, 255, 255, 255, 255);
-            SDL_RenderDebugText(_renderer, 0, 0, (Utf8String)$"FPS: {1000 / FrameDelta}");
-            SDL_SetRenderDrawColor(_renderer, 0, 0, 0, 255);
-
             SDL_RenderPresent(_renderer);
             base.PostRender();
         }
@@ -57,15 +51,11 @@ namespace PmdThing.Core.Hardware.Graphics.SDL
             throw new NotImplementedException();
         }
 
-        public override void DrawRectangle(RectangleF rect)
-        {
-            throw new NotImplementedException();
-        }
-
         public override Capabilities GetCapabilities()
         {
             return new Capabilities
             {
+                Headless = false,
                 Api = HardwareApi.None,
                 ApiVersion = "N/A",
                 Passed = true,

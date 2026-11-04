@@ -4,10 +4,7 @@ using static SDL.SDL3;
 
 namespace PmdThing.Core.Hardware.Graphics.SDL
 {
-    /// <summary>
-    /// Base, unaccelerated SDL renderer which can be used as a fallback if the hardware doesn't support
-    /// the graphics API you are targeting
-    /// </summary>
+   
     public abstract class SdlPmdGraphicsBase : PmdGraphics
     {
 
@@ -58,11 +55,6 @@ namespace PmdThing.Core.Hardware.Graphics.SDL
         public override PmdWindow GetMainWindow()
         {
             return MainWindow;
-        }
-
-        public override void DrawRectangle(RectangleF rect)
-        {
-            throw new NotImplementedException();
         }
 
     }

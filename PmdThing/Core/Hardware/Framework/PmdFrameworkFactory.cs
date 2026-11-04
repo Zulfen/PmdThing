@@ -9,8 +9,6 @@ namespace PmdThing.Core.Hardware.Framework
     public static class PmdFrameworkFactory
     {
 
-        private static PmdFramework? _instance;
-
 
         public static PmdFramework Create(int width, int height, string title)
         {
@@ -31,22 +29,14 @@ namespace PmdThing.Core.Hardware.Framework
             var capabilities = framework.Graphics.GetCapabilities();
 
             framework.Logger.LogInformation("Using framework {framework} with capabilities:", framework);
-            framework.Logger.LogInformation("   Hardware API: {api} ({version})", capabilities.Api, capabilities.ApiVersion);
 
-            framework.Init();
-            _instance = framework;
-            return framework;
-        }
-
-        public static PmdFramework GetInstance()
-        {
-            if (_instance == null)
+            if (!capabilities.Headless)
             {
-                throw new ApplicationException(
-                    "Could not get the instance of the current framework. Has it been initialised?");
+                framework.Logger.LogInformation("   Hardware API: {api} ({version})", capabilities.Api, capabilities.ApiVersion ?? "N/A");
             }
-
-            return _instance;
+            
+            framework.Init();
+            return framework;
         }
 
     }
