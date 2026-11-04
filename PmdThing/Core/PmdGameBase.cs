@@ -42,6 +42,8 @@ namespace PmdThing.Core
 
         public readonly PmdMultiContainer BaseContainer;
 
+        public event Action<PmdComponentId, PmdComponent, bool>? ComponentRegistered;
+
         public PmdGameBase(PmdFramework framework)
         {
             _instance = this;
@@ -67,7 +69,7 @@ namespace PmdThing.Core
             return _instance ?? throw new ApplicationException("Could not get GameBase. Is it initialised?");
         }
 
-        public PmdComponentId RegisterComponent(PmdComponent component, bool unique = true)
+        public PmdComponentId RegisterComponent(PmdComponentId? id, PmdComponent component, bool unique = true)
         {
             _componentCounter++;
             
@@ -84,9 +86,10 @@ namespace PmdThing.Core
             };
             _componentActions.Enqueue(queuedComponent);
 
-            _runtimeComponents.Add(_componentCounter, component);
+            _runtimeComponents.Add(id ?? _componentCounter, component);
+            ComponentRegistered?.Invoke(id ?? _componentCounter, component, unique);
 
-            return _componentCounter;
+            return id ?? _componentCounter;
         }
 
         /// <summary>
@@ -103,6 +106,19 @@ namespace PmdThing.Core
                                                             out TComponent instance,
                                                             params object[] arguments) where TComponent : PmdComponent
         {
+            var id = RegisterComponent(null, typeof(TComponent), container, unique, out var registered, arguments);
+            instance = (TComponent)registered;
+            return id;
+        }
+
+        public PmdComponentId RegisterComponent(
+            PmdComponentId? id,
+            Type componentType,
+            PmdContainer? container,
+            bool unique,
+            out PmdComponent instance,
+            params object[] arguments)
+        {
 
             var fullParams = new object[arguments.Length + 1];
             arguments.CopyTo(fullParams, 1);
@@ -114,12 +130,11 @@ namespace PmdThing.Core
 
             fullParams[0] = componentConfig;
 
-            var componentObject = Activator.CreateInstance(typeof(TComponent), fullParams);
-            if (componentObject != null && componentObject.GetType() == typeof(TComponent))
+            var componentObject = Activator.CreateInstance(componentType, fullParams);
+            if (componentObject != null && componentObject.GetType() == componentType)
             {
-                var component = (TComponent)componentObject;
-                instance = component;
-                return RegisterComponent(component, unique);
+                instance = (PmdComponent)componentObject;
+                return RegisterComponent(id, instance, unique);
             }
 
             throw new InvalidCastException($"Could not create valid instance of class");
@@ -203,6 +218,14 @@ namespace PmdThing.Core
             return componentIds
                 .Select(id => _runtimeComponents[id])
                 .OfType<TComponent>()
+                .ToList();
+        }
+
+        public List<PmdComponent> GetAllComponents()
+        {
+            var componentIds = _allComponents.GetAll();
+            return componentIds
+                .Select(entry => _runtimeComponents[entry.Id])
                 .ToList();
         }
 

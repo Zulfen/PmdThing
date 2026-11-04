@@ -105,6 +105,11 @@ namespace PmdThing.Core
             return (TComponent)Base.GetRuntimeComponent(id);
         }
 
+        protected PmdComponent GetOtherComponent(PmdComponentId id)
+        {
+            return Base.GetRuntimeComponent(id);
+        }
+
         protected TComponent GetBaseContainerComponent<TComponent>(PmdContainerId id) where TComponent : PmdComponent
         {
             return (TComponent)Base.GetContainerComponent(typeof(TComponent), id);
@@ -145,6 +150,15 @@ namespace PmdThing.Core
             params object[] arguments) where TComponent : PmdComponent
         {
             return _parent!.RegisterComponent(unique, out instance, arguments);
+        }
+
+        public PmdComponentId Register(
+            PmdComponentId id,
+            Type componentType,
+            bool unique,
+            params object[] arguments)
+        {
+            return _parent!.RegisterComponent(id, componentType, unique, arguments);
         }
 
         protected void DeregisterParent<TComponent>(PmdComponentId id, bool unique) where TComponent : PmdComponent

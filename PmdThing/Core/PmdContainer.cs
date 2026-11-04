@@ -58,9 +58,14 @@ namespace PmdThing.Core
 
         public PmdComponentId RegisterComponent<TComponent>(bool unique, params object[] arguments) where TComponent : PmdComponent
         {
-            var id = Base.RegisterComponent<TComponent>(this, unique, out _, arguments);
-            _localTypes.Add(typeof(TComponent), id);
-            return id;
+            return RegisterComponent(typeof(TComponent), unique, arguments);
+        }
+
+        public PmdComponentId RegisterComponent(PmdComponentId id, Type componentType, bool unique, params object[] arguments)
+        {
+            var returnedId = Base.RegisterComponent(id, componentType, this, unique, out _, arguments);
+            _localTypes.Add(componentType, returnedId);
+            return returnedId;
         }
 
         public bool ComponentExists(Type componentType, bool unique)
