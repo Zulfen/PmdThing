@@ -22,9 +22,9 @@ namespace PmdThing.Components
             _world = GetBaseContainer<TiledWorld>();
         }
 
-        private void Destination_Changed(PmdTileRef current, PmdTileRef previous)
+        private async void Destination_Changed(PmdTileRef current, PmdTileRef previous)
         {
-            var worldColliding = _world.TileProvider.CollisionCheck(current.Row, current.Column);
+            var worldColliding = await _world.TileProvider.CollisionCheck(current.Row, current.Column);
             var transformsColliding = false;
 
             foreach (var transform in _otherTiles)

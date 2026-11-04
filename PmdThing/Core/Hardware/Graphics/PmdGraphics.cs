@@ -1,7 +1,4 @@
-﻿using System.Drawing;
-using PmdThing.Components;
-
-namespace PmdThing.Core.Hardware.Graphics
+﻿namespace PmdThing.Core.Hardware.Graphics
 {
 
     // TODO: multiple windows?

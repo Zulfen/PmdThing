@@ -3,6 +3,7 @@ using PmdThing.Components;
 using PmdThing.Components.Graphics.OpenGL;
 using PmdThing.Core;
 using PmdThing.Core.Hardware.Framework;
+using PmdThing.Core.Hardware.Graphics;
 using PmdThing.Core.Util;
 using static PmdThing.Core.Util.PmdConstants;
 
@@ -11,7 +12,7 @@ namespace PmdThing.Containers
     public class TestPokemon : PmdContainer
     {
 
-        private readonly SpriteRenderer _renderer;
+        private readonly SpriteRenderer? _renderer;
         private readonly TiledTransform _tiledTransform;
 
         private readonly bool _player;
@@ -19,13 +20,19 @@ namespace PmdThing.Containers
 
         public TestPokemon(PmdGameBase game, PmdFramework framework, Pokemon pokemon, bool player) : base(game, framework)
         {
-            _player = player;
-            _pokemon = pokemon;
+            var capabilities = Framework.Graphics.GetCapabilities();
 
-            RegisterComponent<GlShader>(true, out var glShader,
-                @"C:\Users\Joshua Passmore\source\repos\PmdThing\PmdThing\\Core\Hardware\Graphics\Shaders\Vertex\shader.vert",
-                @"C:\Users\Joshua Passmore\source\repos\PmdThing\PmdThing\\Core\Hardware\Graphics\Shaders\Fragment\shader.frag",
-                "vertex");
+            _player = player && !capabilities.Headless;
+            _pokemon = pokemon;
+            
+
+            if (capabilities.Api == PmdGraphics.HardwareApi.OpenGl)
+            {
+                RegisterComponent<GlShader>(true, out var glShader,
+                    @"Core\Hardware\Graphics\Shaders\Vertex\shader.vert",
+                    @"Core\Hardware\Graphics\Shaders\Fragment\shader.frag",
+                    "vertex");
+            }
 
             RegisterComponent
             (
@@ -38,8 +45,12 @@ namespace PmdThing.Containers
             RegisterIfNotExist<Collision>(false, out var collision, _tiledTransform);
             collision.RegisterTransform(_tiledTransform);
 
-            RegisterComponent(true, out _renderer, _pokemon);
-            
+            if (!capabilities.Headless)
+            {
+                RegisterComponent<SpriteRenderer>(true, out var pokemonRenderer, _pokemon);
+                _renderer = pokemonRenderer;
+            }
+
             if (_player)
             {
                 GetIfExists<Camera>(false)
@@ -73,12 +84,12 @@ namespace PmdThing.Containers
 
         private void Direction_Changed(AnimationDirection newDirection, AnimationDirection prevDirection)
         {
-            _renderer.SetAnimationDirection(newDirection);
+            _renderer?.SetAnimationDirection(newDirection);
         }
 
         private void Moving_Changed(bool currentValue, bool previousValue)
         {
-            _renderer.CurrentAnimation = currentValue ? AnimationType.Walk : AnimationType.Idle;
+            _renderer?.CurrentAnimation = currentValue ? AnimationType.Walk : AnimationType.Idle;
         }
 
     }

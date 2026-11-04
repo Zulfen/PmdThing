@@ -1,4 +1,5 @@
-﻿using PmdContainerId = System.Int32;
+﻿using System.Collections.Concurrent;
+using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core.Util.Structures
 {
@@ -11,15 +12,14 @@ namespace PmdThing.Core.Util.Structures
             public PmdContainerId Id;
         }
 
-        private readonly Dictionary<Type, List<PmdContainerId>> _typeMap = new();
+        private readonly ConcurrentDictionary<Type, List<PmdContainerId>> _typeMap = new();
 
         public void Add(Type componentType, PmdContainerId idCounter)
         {
 
             if (!componentType.IsSubclassOf(typeof(PmdContainer)) && componentType != typeof(PmdContainer)) throw new ArgumentException(
                 "Type passed in is not a container");
-
-            if (_typeMap.TryGetValue(componentType, out var ints))
+            if (_typeMap.TryGetValue(componentType, out _))
             {
                 _typeMap[componentType].Add(idCounter);
             }
@@ -45,7 +45,7 @@ namespace PmdThing.Core.Util.Structures
         {
             if (!componentType.IsSubclassOf(typeof(PmdContainer))) throw new ArgumentException(
                 "Type passed in is not a container");
-            _typeMap.Remove(componentType);
+            _typeMap.Remove(componentType, out _);
         }
 
         public void Remove(Type componentType, PmdContainerId id)
@@ -60,7 +60,7 @@ namespace PmdThing.Core.Util.Structures
 
                 if (_typeMap[componentType].Count == 0)
                 {
-                    _typeMap.Remove(componentType);
+                    _typeMap.Remove(componentType, out _);
                 }
             }
 
@@ -70,7 +70,7 @@ namespace PmdThing.Core.Util.Structures
         {
             return _typeMap.TryGetValue(componentType, out var ints)
                 ? ints
-                : throw new ArgumentException("Component type has not been registered");
+                : throw new ArgumentException("Container type has not been registered");
         }
 
 

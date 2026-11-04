@@ -69,7 +69,6 @@ namespace PmdThing.Components.Networking.Rokon
                 OnClientDisconnect(connection.GetEndpoint());
             }
             
-
             return buffer;
         }
 
@@ -84,7 +83,6 @@ namespace PmdThing.Components.Networking.Rokon
                 Framework.Logger.LogDebug("Connection to [{address}] closed ({exception})", connection.GetEndpoint(), ex.Message);
                 OnClientDisconnect(connection.GetEndpoint());
             }
-            
         }
 
         public override void Cleanup()

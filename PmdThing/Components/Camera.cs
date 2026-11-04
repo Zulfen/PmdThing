@@ -1,4 +1,5 @@
 ﻿using GlmSharp;
+using PmdThing.Containers;
 using PmdThing.Core;
 
 namespace PmdThing.Components
@@ -22,7 +23,7 @@ namespace PmdThing.Components
 
         public void SetTarget(Transform transform, Action<vec2, vec2>? changedListener = null)
         {
-            var tiledWorld = GetSharedComponent<TiledWorldRenderer>();
+            var tiledWorld = GetBaseContainerComponent<TiledWorld, TiledWorldRenderer>();
 
             if (changedListener != null)
             {

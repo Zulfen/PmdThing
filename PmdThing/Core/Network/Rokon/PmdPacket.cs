@@ -13,12 +13,13 @@ public struct PmdPacket()
     public record PacketDto
     {
         public required Type Type;
-        public required PacketType PacketType;
+        public PmdPacketType PmdPacketType;
         public int Id;
         public bool Unique;
         public string? Attribute;
         public Type? DataType;
         public object[]? Data;
+        public required PmdPacketSource Source;
     }
 
     [Key(0)]
@@ -28,7 +29,7 @@ public struct PmdPacket()
     public int ProtocolVersion = 1;
 
     [Key(2)]
-    public PacketType Type;
+    public PmdPacketType Type;
 
     [Key(3)]
     public required string ComponentType;
@@ -48,6 +49,9 @@ public struct PmdPacket()
     [Key(8)] 
     public string? DataType;
 
+    [Key(9)]
+    public required PmdPacketSource Source;
+
     // https://stackoverflow.com/a/15020402
 
     public static bool ValidPacket(PacketDto packet)
@@ -55,7 +59,7 @@ public struct PmdPacket()
         return packet.Data is { Length: > 0 };
     }
 
-    public static byte[] Encode(Type componentType, object[] values, int componentId, PacketType type, bool unique, string? field, Type? dataType)
+    public static byte[] Encode(Type componentType, object[] values, int componentId, PmdPacketType type, bool unique, string? field, Type? dataType, PmdPacketSource source)
     {
         if (!TypeCheck(componentType, true))
         {
@@ -81,7 +85,8 @@ public struct PmdPacket()
             Data = JsonSerializer.Serialize(values),
             Attribute = field,
             Unique = unique,
-            DataType = dataName
+            DataType = dataName,
+            Source = source
         };
 
         return MessagePackSerializer.Serialize(packet);
@@ -92,9 +97,9 @@ public struct PmdPacket()
         return type.IsPrimitive || type.IsValueType || (isComponent && type.IsSubclassOf(typeof(PmdListenableComponent<>))) || type == typeof(PmdListenableValue<>);
     }
 
-    public static byte[] Encode(Type componentType, object value, int componentId, PacketType type, bool unique, string? field, Type? dataType)
+    public static byte[] Encode(Type componentType, object value, int componentId, PmdPacketType type, bool unique, string? field, Type? dataType, PmdPacketSource source)
     {
-        return Encode(componentType, [value], componentId, type, unique, field, dataType);
+        return Encode(componentType, [value], componentId, type, unique, field, dataType, source);
     }
 
     public static PacketDto Decode(byte[] packetBytes)
@@ -128,9 +133,10 @@ public struct PmdPacket()
         {
             Id = packet.ComponentId,
             Type = componentType,
-            PacketType = packet.Type,
+            PmdPacketType = packet.Type,
             Attribute = packet.Attribute,
-            Unique = packet.Unique
+            Unique = packet.Unique,
+            Source = packet.Source
         };
 
         if (dataType != null)

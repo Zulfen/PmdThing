@@ -1,4 +1,5 @@
 ﻿using GlmSharp;
+using PmdThing.Containers;
 using PmdThing.Core;
 using PmdThing.Core.Util;
 using System.Xml.Serialization;
@@ -15,7 +16,7 @@ namespace PmdThing.Components
 
         private SpriteSheet? _spriteSheet;
         private readonly Transform _transform;
-        private readonly TiledWorldRenderer _renderer;
+        private readonly TiledWorldRenderer _worldRenderer;
 
         private readonly Pokemon _currentPokemon;
         private AnimationType _currentAnimation;
@@ -61,7 +62,7 @@ namespace PmdThing.Components
             _animations = LoadAllAnimations();
             CurrentAnimation = AnimationType.Idle;
 
-            _renderer = GetSharedComponent<TiledWorldRenderer>();
+            _worldRenderer = GetBaseContainerComponent<TiledWorld, TiledWorldRenderer>();
         }
 
         private string GetDataPath()
@@ -136,7 +137,10 @@ namespace PmdThing.Components
         public override void Render()
         {
 
-            var spritePosition = _transform.IsTarget ? _renderer.ScreenCenter - _spriteCenter : _renderer.ScreenCenter - _spriteCenter - _renderer.Offset + _transform.ComponentValue;
+            var spritePosition = _transform.IsTarget
+                ? _worldRenderer.ScreenCenter - _spriteCenter
+                : _worldRenderer.ScreenCenter - _spriteCenter - _worldRenderer.Offset + _transform.ComponentValue;
+
             _spriteSheet?.DrawSprite(
                 spritePosition.x + _animations[_currentAnimation].OffsetX,
                 spritePosition.y + _animations[_currentAnimation].OffsetY,

@@ -1,6 +1,9 @@
-﻿using PmdContainerId = System.Int32;
+﻿using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util.Structures;
-using PmdThing.Core.Hardware.Framework;
+using System.ComponentModel;
+using System.Xml;
+using System.Xml.Linq;
+using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core
 {
@@ -12,11 +15,6 @@ namespace PmdThing.Core
         private PmdContainerId _containerCounter;
         private readonly Dictionary<PmdContainerId, PmdContainer> _runtimeContainers = new();
 
-        public void AddContainer<TContainer>(PmdContainerId id, TContainer instance) where TContainer : PmdContainer
-        {
-            _containerRegistry.Add(typeof(TContainer), id);
-            _runtimeContainers.Add(id, instance);
-        }
 
         public PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, out PmdContainer instance, params object[]? arguments)
         {
@@ -35,12 +33,21 @@ namespace PmdThing.Core
             }
             
             var containerInstance = Activator.CreateInstance(containerType, completeArgs);
+            var newId = id ?? _containerCounter;
             if (containerInstance is PmdContainer container)
             {
                 instance = container;
                 _containerCounter++;
-                AddContainer(id ?? _containerCounter, instance);
-                return id ?? _containerCounter;
+
+                if (container.AsyncInit)
+                {
+                    Task.Run(container.Init);
+                }
+
+                _containerRegistry.Add(containerType, newId);
+                _runtimeContainers.Add(newId, instance);
+
+                return newId;
             }
 
             throw new ArgumentException(

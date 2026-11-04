@@ -3,6 +3,12 @@
     public class PmdListenableValue<T>
     {
 
+        public class ValueEventArgs(T newValue, T oldValue) : EventArgs
+        {
+            public T NewValue { get; } = newValue;
+            public T OldValue { get; } = oldValue;
+        }
+
         private readonly PmdComponent _parent;
         private readonly ProcessingOrder _processingOrder;
 

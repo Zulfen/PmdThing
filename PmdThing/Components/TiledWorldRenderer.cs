@@ -2,11 +2,8 @@
 using PmdThing.Components.Graphics.OpenGL;
 using PmdThing.Containers;
 using PmdThing.Core;
-using PmdThing.Core.Hardware.Graphics;
 using PmdThing.Core.Util;
 using System.Drawing;
-using System.Net.Security;
-using PmdThing.Components.Networking;
 
 namespace PmdThing.Components
 {
@@ -16,11 +13,15 @@ namespace PmdThing.Components
         public vec2 Offset { get; set; } = vec2.Zero;
         public vec2 ScreenCenter { get; set; }
 
-        private readonly SpriteSheet _tileSheet;
+        public int Rows { get; private set; }
+        public int Columns { get; private set; }
+
+        private SpriteSheet? _tileSheet;
 
         public TiledWorldRenderer(PmdComponentConfig config) : base(config)
         {
             DoesRendering = true;
+
             Priority = 2;
 
             var window = Framework.Graphics.GetMainWindow();
@@ -28,37 +29,41 @@ namespace PmdThing.Components
             ScreenCenter = new vec2(window.GetWidth() / 2f, window.GetHeight() / 2f);
 
             Register<GlShader>(true, out _,
-                @"C:\Users\Joshua Passmore\source\repos\PmdThing\PmdThing\\Core\Hardware\Graphics\Shaders\Vertex\shader.vert",
-                @"C:\Users\Joshua Passmore\source\repos\PmdThing\PmdThing\\Core\Hardware\Graphics\Shaders\Fragment\shader.frag",
+                @"Core\Hardware\Graphics\Shaders\Vertex\shader.vert",
+                @"Core\Hardware\Graphics\Shaders\Fragment\shader.frag",
                 "vertex");
-            
-            Register
-            (
-                true,
-                out _tileSheet,
-                ParentContainer.TileProvider.GetImagePath(),
-                ParentContainer.TileProvider.GetTileWidth(),
-                ParentContainer.TileProvider.GetTileHeight()
-            );
-
-            // link all tiles to sprite sheet
-            for (var row = 0; row < ParentContainer.TileProvider.GetRows(); row++)
-            {
-                for (var column = 0; column < ParentContainer.TileProvider.GetColumns(); column++)
-                {
-                    var tile = ParentContainer.GetTileAt(row, column);
-                    tile?.RegisterProperty(ParentContainer.TileProvider.GetSheetLocation(row, column));
-                }
-            }
-
         }
 
-        public vec2 GetWorldSpace(PmdTileRef tile)
+        public async Task SetData(int rows, int columns, string imagePath)
         {
-            return new vec2(
-                tile.Column * _tileSheet.GetScaledWidth(),
-                tile.Row * _tileSheet.GetScaledHeight()
-            );
+            Rows = rows;
+            Columns = columns;
+
+            SubmitTask(() =>
+            {
+                _tileSheet?.Cleanup();
+                Register
+                (
+                    true,
+                    out SpriteSheet registeredSheet,
+                    imagePath,
+                    Rows,
+                    Columns
+                );
+                _tileSheet = registeredSheet;
+
+            }, ProcessingOrder.Update);
+            
+            // link all tiles to sprite sheet
+            for (var row = 0; row < Rows; row++)
+            {
+                for (var column = 0; column < Columns; column++)
+                {
+                    var tile = ParentContainer.GetTileAt(row, column);
+                    var imageRect = await ParentContainer.TileProvider.GetSheetLocation(row, column);
+                    tile?.RegisterProperty(imageRect);
+                }
+            }
         }
 
         public void Camera_OffsetChanged(vec2 currentPos, vec2 prevPos)
@@ -68,34 +73,36 @@ namespace PmdThing.Components
 
         public override void Render()
         {
+            if (_tileSheet == null) return;
 
             float screenSpaceY = 0;
             float screenSpaceX = 0;
 
-            for (var row = 0; row < ParentContainer.TileProvider.GetRows(); row++)
+            for (var row = 0; row < Rows; row++)
             {
-                for (var column = 0; column < ParentContainer.TileProvider.GetColumns(); column++)
+                for (var column = 0; column < Columns; column++)
                 {
                     var tileContainer = ParentContainer.GetTileAt(row, column);
                     if (tileContainer == null) continue;
 
+                    if (!tileContainer.HasProperty<RectangleF>()) continue;
                     var textureRect = tileContainer.GetProperty<RectangleF>();
 
                     var destRect = new RectangleF
                     {
                         X = screenSpaceX + ScreenCenter.x - Offset.x,
                         Y = screenSpaceY + ScreenCenter.y - Offset.y,
-                        Width = _tileSheet.GetSpriteWidth(),
-                        Height = _tileSheet.GetSpriteWidth(),
+                        Width = _tileSheet?.GetSpriteWidth() ?? 0,
+                        Height = _tileSheet?.GetSpriteWidth() ?? 0,
                     };
 
-                    _tileSheet.DrawSprite(textureRect, destRect);
+                    _tileSheet?.DrawSprite(textureRect, destRect);
 
-                    screenSpaceX += _tileSheet.GetScaledWidth();
+                    screenSpaceX += _tileSheet?.GetScaledWidth() ?? 0;
                 }
 
                 screenSpaceX = 0;
-                screenSpaceY += _tileSheet.GetScaledHeight();
+                screenSpaceY += _tileSheet?.GetScaledHeight() ?? 0;
 
             }
 

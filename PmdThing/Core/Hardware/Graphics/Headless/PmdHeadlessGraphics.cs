@@ -43,17 +43,14 @@ namespace PmdThing.Core.Hardware.Graphics.Headless
 
         public override void PostRender()
         {
-            throw new NotImplementedException();
         }
 
         public override void PreRender()
         {
-            throw new NotImplementedException();
         }
 
         public override void PreUpdate()
         {
-            throw new NotImplementedException();
         }
     }
 }

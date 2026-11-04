@@ -1,4 +1,5 @@
-﻿using PmdComponentId = System.Int32;
+﻿using System.Collections.Concurrent;
+using PmdComponentId = System.Int32;
 
 namespace PmdThing.Core.Util.Structures
 {
@@ -11,7 +12,7 @@ namespace PmdThing.Core.Util.Structures
             public PmdComponentId Id;
         }
 
-        private readonly Dictionary<Type, List<PmdComponentId>> _typeMap = new();
+        private readonly ConcurrentDictionary<Type, List<PmdComponentId>> _typeMap = new();
 
         public void Add(Type componentType, PmdComponentId idCounter)
         {
@@ -45,7 +46,7 @@ namespace PmdThing.Core.Util.Structures
         {
             if (!componentType.IsSubclassOf(typeof(PmdComponent))) throw new ArgumentException(
                 "Type passed in is not a component");
-            _typeMap.Remove(componentType);
+            _typeMap.Remove(componentType, out _);
         }
 
         public void Remove(Type componentType, PmdComponentId id)
@@ -60,7 +61,7 @@ namespace PmdThing.Core.Util.Structures
 
                 if (_typeMap[componentType].Count == 0)
                 {
-                    _typeMap.Remove(componentType);
+                    _typeMap.Remove(componentType, out _);
                 }
             }
 

@@ -1,6 +1,6 @@
 ﻿namespace PmdThing.Core.Network.Rokon
 {
-    public enum PacketType
+    public enum PmdPacketType
     {
         AddComponent,
         RemoveComponent,

@@ -2,7 +2,6 @@
 using PmdThing.Core;
 using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
-using static PmdThing.Core.Network.PmdComponentUtils;
 using PmdComponentId = System.Int32;
 
 namespace PmdThing.Components.Networking
@@ -24,7 +23,7 @@ namespace PmdThing.Components.Networking
             set => Interlocked.Exchange(ref _running, Convert.ToInt64(value));
         }
 
-        protected GameServer(PmdComponentConfig config) : base(config)
+        protected GameServer(PmdComponentConfig config) : base(config, typeof(PmdServerSync), PmdPacketSource.Server)
         {
             Base.ComponentRegistered += RegisterComponent;
         }
@@ -81,7 +80,7 @@ namespace PmdThing.Components.Networking
             value?.SetValue(component, data);
         }
 
-        public override void ListenableValueChanged(object current, object previous, PmdPacket.PacketDto packetDto)
+        public override void ListenableValueChanged(dynamic current, dynamic previous, PmdPacket.PacketDto packetDto)
         {
             if (!current.Equals(previous))
             {
@@ -98,7 +97,7 @@ namespace PmdThing.Components.Networking
             }
         }
 
-        public void SendQueryResponse(TConn connection, PmdPacket.PacketDto reqPacket, QueryType queryType, dynamic response)
+        private void SendQueryResponse(TConn connection, PmdPacket.PacketDto reqPacket, QueryType queryType, dynamic response)
         {
             var packetDto = reqPacket with
             {
@@ -126,9 +125,9 @@ namespace PmdThing.Components.Networking
                         continue;
                     }
 
-                    switch (packet.PacketType)
+                    switch (packet.PmdPacketType)
                     {
-                        case PacketType.UpdateComponent:
+                        case PmdPacketType.UpdateComponent:
 
                             if (packet.Type == typeof(PmdListenableValue<>) && packet.Attribute != null)
                             {
@@ -141,7 +140,7 @@ namespace PmdThing.Components.Networking
 
                             break;
 
-                        case PacketType.AddComponent:
+                        case PmdPacketType.AddComponent:
 
                             if (packet.Type.IsSubclassOf(typeof(PmdComponent)))
                             {
@@ -154,7 +153,7 @@ namespace PmdThing.Components.Networking
 
                             break;
 
-                        case PacketType.RemoveComponent:
+                        case PmdPacketType.RemoveComponent:
 
                             if (packet.Type.IsSubclassOf(typeof(PmdComponent)))
                             {
@@ -163,7 +162,7 @@ namespace PmdThing.Components.Networking
 
                             break;
 
-                        case PacketType.Query:
+                        case PmdPacketType.Query:
 
                             if (packet.Attribute == null) break;
                             if (Enum.TryParse(packet.Attribute, out QueryType reqType))
@@ -202,7 +201,7 @@ namespace PmdThing.Components.Networking
                 var packet = connection.Queue.Take(ShutdownTokenSrc.Token);
                 if (packet.Data == null) continue;
 
-                var packetBytes = PmdPacket.Encode(packet.Type, packet.Data, packet.Id, packet.PacketType, packet.Unique, packet.Attribute, packet.DataType);
+                var packetBytes = PmdPacket.Encode(packet.Type, packet.Data, packet.Id, packet.PmdPacketType, packet.Unique, packet.Attribute, packet.DataType, packet.Source);
                 SendBytes(connection, packetBytes);
             }
         }

@@ -1,12 +1,11 @@
 ﻿using System.Drawing;
-using PmdThing.Core.Hardware.Graphics;
 
 namespace PmdThing.Core.Util
 {
     public interface IPmdTileProvider
     {
 
-        string GetImagePath();
+        Task<string> GetImagePath();
 
         /// <summary>
         /// Get rectangle of tile's texture in the sprite sheet.
@@ -14,12 +13,12 @@ namespace PmdThing.Core.Util
         /// <param name="row">Row</param>
         /// <param name="column">Column</param>
         /// <returns>Rectangle of location in sprite sheet</returns>
-        RectangleF GetSheetLocation(int row, int column);
-        bool CollisionCheck(int row, int column);
-        int GetTileWidth();
-        int GetTileHeight();
-        int GetRows();
-        int GetColumns();
+        Task<RectangleF> GetSheetLocation(int row, int column);
+        Task<bool> CollisionCheck(int row, int column);
+        Task<int> GetTileWidth();
+        Task<int> GetTileHeight();
+        Task<int> GetRows();
+        Task<int> GetColumns();
 
 
     }

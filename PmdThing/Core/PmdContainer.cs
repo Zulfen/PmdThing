@@ -15,6 +15,12 @@ namespace PmdThing.Core
 
         private readonly Dictionary<Type, PmdContainerId> _properties = new();
 
+        public bool AsyncInit = false;
+
+        public virtual Task Init()
+        {
+            return Task.CompletedTask;
+        }
 
         public PmdComponent GetComponent(Type componentType)
         {
@@ -148,6 +154,10 @@ namespace PmdThing.Core
             throw new ArgumentException($"Property of type {typeof(T)} was not registered");
         }
 
+        public bool HasProperty<T>()
+        {
+            return _properties.ContainsKey(typeof(T));
+        }
 
         public void Deregister<TComponent>(PmdComponentId id, bool unique)
         {

@@ -39,10 +39,12 @@ namespace PmdThing.Core
 
         private readonly ConcurrentQueue<PmdQueuedComponent> _componentActions = [];
         private readonly List<PmdComponent> _processList = [];
-
+        private readonly ConcurrentQueue<Action> _mainThreadTasks = new();
         public readonly PmdMultiContainer BaseContainer;
-
         public event Action<PmdComponentId, PmdComponent, bool>? ComponentRegistered;
+
+        private Thread? _mainThread;
+        private readonly Lock _componentLock = new();
 
         public PmdGameBase(PmdFramework framework)
         {
@@ -58,9 +60,9 @@ namespace PmdThing.Core
             RegisterComponent<Components.Timer>(null, false, out _, (double)1000 / 30, ProcessingOrder.Update);
         }
 
-        public static PmdGameBase Create(int width, int height, string title)
+        public static PmdGameBase Create(int width, int height, string title, string[] commandLineArgs)
         {
-            var framework = PmdFrameworkFactory.Create(width, height, title);
+            var framework = PmdFrameworkFactory.Create(width, height, title, commandLineArgs);
             return new PmdGameBase(framework);
         }
 
@@ -71,25 +73,29 @@ namespace PmdThing.Core
 
         public PmdComponentId RegisterComponent(PmdComponentId? id, PmdComponent component, bool unique = true)
         {
-            _componentCounter++;
-            
-            _allComponents.Add(component.GetType(), _componentCounter);
-            if (!unique)
+            lock (_componentLock)
             {
-                _sharedComponents.Add(component.GetType(), _componentCounter);
+                _componentCounter++;
+
+                _allComponents.Add(component.GetType(), _componentCounter);
+                if (!unique)
+                {
+                    _sharedComponents.Add(component.GetType(), _componentCounter);
+                }
+
+                var queuedComponent = new PmdQueuedComponent()
+                {
+                    Action = PmdComponentAction.Add,
+                    Instance = component
+                };
+                _componentActions.Enqueue(queuedComponent);
+
+                _runtimeComponents.Add(id ?? _componentCounter, component);
+                ComponentRegistered?.Invoke(id ?? _componentCounter, component, unique);
+
+                return id ?? _componentCounter;
+
             }
-
-            var queuedComponent = new PmdQueuedComponent()
-            {
-                Action = PmdComponentAction.Add,
-                Instance = component
-            };
-            _componentActions.Enqueue(queuedComponent);
-
-            _runtimeComponents.Add(id ?? _componentCounter, component);
-            ComponentRegistered?.Invoke(id ?? _componentCounter, component, unique);
-
-            return id ?? _componentCounter;
         }
 
         /// <summary>
@@ -135,7 +141,14 @@ namespace PmdThing.Core
             var componentObject = Activator.CreateInstance(componentType, fullParams);
             if (componentObject != null && componentObject.GetType() == componentType)
             {
-                instance = (PmdComponent)componentObject;
+                var component = (PmdComponent)componentObject;
+                instance = component;
+
+                if (component.AsyncInit)
+                {
+                    Task.Run(component.Init);
+                }
+
                 return RegisterComponent(id, instance, unique);
             }
 
@@ -243,6 +256,17 @@ namespace PmdThing.Core
             return _componentCounter;
         }
 
+        public void SubmitTask(Action task)
+        {
+            _mainThreadTasks.Enqueue(task);
+        }
+
+        public bool IsMainThread()
+        {
+            if (_mainThread == null) return true;
+            return Thread.CurrentThread == _mainThread;
+        }
+
         public void Shutdown()
         {
             Framework.Running = false;
@@ -250,12 +274,12 @@ namespace PmdThing.Core
 
         public void MainLoop()
         {
+            _mainThread = Thread.CurrentThread;
 
             while (Framework.Running)
             {
                 Framework.Graphics.PreUpdate();
                 Framework.Update();
-
 
                 // Done to modify the collection of components whilst not iterating over them
                 if (_componentActions.TryDequeue(out var queuedComponent))
@@ -288,6 +312,11 @@ namespace PmdThing.Core
                         .Invoke();
                     component.Update();
 
+                }
+
+                if (_mainThreadTasks.TryDequeue(out var mainThreadTask))
+                {
+                    mainThreadTask.Invoke();
                 }
 
                 Framework.Graphics.PreRender();

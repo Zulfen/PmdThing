@@ -18,6 +18,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
             _supportsGl3 = SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
             _supportsGl3 = SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
             _supportsGl3 = SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+            
 
             var contextState = SDL_GL_CreateContext(MainWindow.GetHandle());
             if (contextState == null)
@@ -36,6 +37,9 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
             //    var msg = Marshal.PtrToStringAnsi(message, length);
             //    Console.WriteLine($"GL DEBUG: source={source} type={type} id={id} severity={severity} msg={msg}");
             //}, IntPtr.Zero);
+
+            // NVIDIA drivers (on Windows at least) seem to force vsync on by default, so disabling it
+            SDL_GL_SetSwapInterval(0);
         }
 
         public override void Cleanup()

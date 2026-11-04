@@ -1,12 +1,18 @@
-﻿using PmdThing.Core.Hardware.Graphics.SDL;
+﻿using PmdThing.Core.Hardware.Graphics.Headless;
+using PmdThing.Core.Hardware.Graphics.SDL;
 using PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL;
 
 namespace PmdThing.Core.Hardware.Graphics
 {
     public static class PmdGraphicsFactory
     {
-        public static PmdGraphics? Create(int width, int height, string title)
+        public static PmdGraphics? Create(int width, int height, string title, string[] commandLineArgs)
         {
+            if (commandLineArgs.Contains("--server"))
+            {
+                return new PmdHeadlessGraphics(width, height, title);
+            }
+
             PmdGraphics[] backends =
             [
                 new SdlPmdGraphicsGl(width, height, title),

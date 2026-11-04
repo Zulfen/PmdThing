@@ -17,7 +17,7 @@ namespace PmdThing.Components.Graphics.OpenGL
 
         //public int ElementBufferObject { get; private set; } = GL.GenBuffer();
 
-        public string DataAttribute { get; init; } = "";
+        public string DataAttribute { get; init; }
 
         private readonly Dictionary<string, int> _uniformLocations = [];
 
@@ -25,9 +25,9 @@ namespace PmdThing.Components.Graphics.OpenGL
 
         public GlShader(PmdComponentConfig config, string vertexPath, string fragmentPath, string dataAttrib = "") : base(config, vertexPath, fragmentPath)
         {
-            if (Framework.Graphics.GetCapabilities().Api != PmdGraphics.HardwareApi.OpenGl)
+            if (!Base.IsMainThread())
             {
-                return;
+                throw new InvalidOperationException("Shaders must be created on the main thread.");
             }
 
             DataAttribute = dataAttrib;
@@ -154,7 +154,6 @@ namespace PmdThing.Components.Graphics.OpenGL
             GL.BindVertexArray(VertexArrayObject);
             GL.BindBuffer(BufferTarget.ArrayBuffer, VertexBufferObject);
             GL.UseProgram(ProgramId);
-            CheckError();
         }
 
         public int GetAttribLocation(string attribName)

@@ -1,7 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
+using PmdThing.Core.Hardware.Framework.Headless;
 using PmdThing.Core.Hardware.Framework.SDL;
 using PmdThing.Core.Hardware.Graphics;
+using PmdThing.Core.Hardware.Graphics.Headless;
 using PmdThing.Core.Hardware.Graphics.SDL;
+using PmdThing.Core.Hardware.Input.Headless;
 using PmdThing.Core.Hardware.Input.SDL;
 
 namespace PmdThing.Core.Hardware.Framework
@@ -10,20 +13,28 @@ namespace PmdThing.Core.Hardware.Framework
     {
 
 
-        public static PmdFramework Create(int width, int height, string title)
+        public static PmdFramework Create(int width, int height, string title, string[] commandLineArgs)
         {
-            var graphics = PmdGraphicsFactory.Create(width, height, title);
+            var graphics = PmdGraphicsFactory.Create(width, height, title, commandLineArgs);
 
             // the framework is quite tied to the graphics api at the moment, hence below
             PmdFramework framework;
-            if (graphics is SdlPmdGraphicsBase sdlGraphics)
+            switch (graphics)
             {
-                var sdlKeyboard = new SdlPmdKeyboard();
-                framework = new SdlPmdFramework(sdlGraphics, sdlKeyboard);
-            }
-            else
-            {
-                throw new PlatformNotSupportedException("what??");
+                case SdlPmdGraphicsBase sdlGraphics:
+                {
+                    var sdlKeyboard = new SdlPmdKeyboard();
+                    framework = new SdlPmdFramework(sdlGraphics, sdlKeyboard);
+                    break;
+                }
+                case PmdHeadlessGraphics headlessGraphics:
+                {
+                    var headlessKb = new PmdHeadlessKeyboard();
+                    framework = new PmdHeadlessFramework(headlessGraphics, headlessKb);
+                    break;
+                }
+                default:
+                    throw new PlatformNotSupportedException("what??");
             }
 
             var capabilities = framework.Graphics.GetCapabilities();

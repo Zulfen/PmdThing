@@ -9,8 +9,8 @@
     public interface IPmdKeyboard
     {
         public delegate void OnKey(PmdKey key);
-        public event OnKey KeyDown;
-        public event OnKey KeyUp;
+        public event OnKey? KeyDown;
+        public event OnKey? KeyUp;
         bool IsKeyDown(PmdKey key);
     }
 

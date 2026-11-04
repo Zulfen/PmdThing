@@ -20,6 +20,7 @@ namespace PmdThing.Core
         public bool ShouldUpdate = true;
         public bool DoesRendering = false;
         public bool HandlesPostRender = false;
+        public bool AsyncInit = false;
         private bool _disposedValue;
 
         private readonly ConcurrentQueue<Action> _updateTasks = new();
@@ -31,6 +32,11 @@ namespace PmdThing.Core
         public int CompareTo(PmdComponent? other)
         {
             return other?.Priority.CompareTo(Priority) ?? 0;
+        }
+
+        public virtual Task Init()
+        {
+            return Task.CompletedTask;
         }
 
         public virtual void Update()

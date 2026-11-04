@@ -61,9 +61,9 @@ namespace PmdThing.Core.Util
             _tileset = GetTileset(tileset); 
         }
 
-        public string GetImagePath()
+        public Task<string> GetImagePath()
         {
-            return Path.Join(Directory.GetCurrentDirectory(), "TileSets", _tileset.Image.Value.Source.Value);
+            return Task.FromResult(Path.Join(Directory.GetCurrentDirectory(), "TileSets", _tileset.Image.Value.Source.Value));
         }
 
         /// <summary>
@@ -72,31 +72,31 @@ namespace PmdThing.Core.Util
         /// <param name="row">Row</param>
         /// <param name="column">Column</param>
         /// <returns>Rectangle of location in sprite sheet</returns>
-        public RectangleF GetSheetLocation(int row, int column)
+        public Task<RectangleF> GetSheetLocation(int row, int column)
         {
             var tileGid = _tileLayer.GetGlobalTileIDAtCoord(column, row);
             var tileset = _tmxMap.ResolveTilesetForGlobalTileID(tileGid, out var localTileId);
              
             var sourceRect = tileset.GetSourceRectangleForLocalTileID(localTileId);
 
-            return new RectangleF
+            return Task.FromResult(new RectangleF
             {
                 X = sourceRect.X,
                 Y = sourceRect.Y,
                 Width = sourceRect.Width,
                 Height = sourceRect.Height
-            };
+            });
         }
 
-        public bool CollisionCheck(int row, int column)
+        public Task<bool> CollisionCheck(int row, int column)
         {
 
             var posRect = new RectangleF()
             {
-                X = column * GetTileWidth(),
-                Y = row * GetTileHeight(),
-                Width = GetTileWidth(),
-                Height = GetTileHeight()
+                X = column * _tmxMap.TileWidth,
+                Y = row * _tmxMap.TileHeight,
+                Width = _tmxMap.TileWidth,
+                Height = _tmxMap.TileHeight
             };
 
             foreach (var collisionRect in _objectLayer.Objects.OfType<RectangleObject>())
@@ -109,10 +109,10 @@ namespace PmdThing.Core.Util
                     Height = (int)collisionRect.Height,
                 };
 
-                if (posRect.IntersectsWith(mapRect)) return true;
+                if (posRect.IntersectsWith(mapRect)) return Task.FromResult(true);
             }
 
-            return false;
+            return Task.FromResult(false);
         }
 
         private TileLayer GetTileLayer(string name)
@@ -135,24 +135,24 @@ namespace PmdThing.Core.Util
                 .SingleOrDefault(tileset => tileset.Name == name) ?? throw new ArgumentException("Tileset could not be found");
         }
 
-        public int GetTileWidth()
+        public Task<int> GetTileWidth()
         {
-            return _tmxMap.TileWidth;
+            return Task.FromResult(_tmxMap.TileWidth);
         }
 
-        public int GetTileHeight()
+        public Task<int> GetTileHeight()
         {
-            return _tmxMap.TileHeight;
+            return Task.FromResult(_tmxMap.TileHeight);
         }
 
-        public int GetRows()
+        public Task<int> GetRows()
         {
-            return _tmxMap.Height;
+            return Task.FromResult(_tmxMap.Height);
         }
 
-        public int GetColumns()
+        public Task<int> GetColumns()
         {
-            return _tmxMap.Width;
+            return Task.FromResult(_tmxMap.Width);
         }
 
     }

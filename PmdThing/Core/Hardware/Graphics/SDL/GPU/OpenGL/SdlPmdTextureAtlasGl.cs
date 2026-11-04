@@ -8,8 +8,8 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
 {
     public unsafe class SdlPmdTextureAtlasGl : PmdTextureAtlas<SdlPmdImage>
     {
-        private const int MaxWidth = 1024;
-        private const int MaxHeight = 1024;
+        private const int MaxWidth = 2048;
+        private const int MaxHeight = 2048;
 
         public class AtlasEntry
         {
@@ -28,8 +28,6 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
 
         public SdlPmdTextureAtlasGl(PmdComponentConfig config) : base(config)
         {
-            GL.GetInteger(GetPName.MaxTextureImageUnits, out var maxUnits);
-            Framework.Logger.LogDebug("Max OpenGL texture units supported: {units}", maxUnits);
         }
 
         public override Point AddTexture(SdlPmdImage image)
@@ -77,11 +75,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
 
                 if (nextY > MaxHeight && _currentAtlas.LatestPoint.Y > 0)
                 {
-                    // whatever
-                    _currentAtlas = new AtlasEntry
-                    {
-                        LatestImage = image,
-                    };
+                    _currentAtlas = new AtlasEntry();
                 }
                 else
                 {
@@ -122,7 +116,7 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
 
             SDL_BlitSurface(_currentAtlas.Surface, null, tempAtlas, null);
             SDL_FlipSurface(tempAtlas, SDL_FlipMode.SDL_FLIP_VERTICAL);
-
+                
             SDL_SaveBMP(tempAtlas, $"atlas{_currentAtlas.TextureId}.bmp");
 
             GL.BindTexture(TextureTarget.Texture2D, _currentAtlas.TextureId);

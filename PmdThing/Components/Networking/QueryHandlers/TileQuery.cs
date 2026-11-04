@@ -21,7 +21,8 @@ namespace PmdThing.Components.Networking.QueryHandlers
             TileWidth,
             TileHeight,
             Rows,
-            Columns
+            Columns,
+            Path
         }
 
         private readonly TiledWorld _tiledWorld;

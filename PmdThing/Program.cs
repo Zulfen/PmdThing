@@ -1,4 +1,5 @@
-﻿using PmdThing.Components;
+﻿using DotTiled;
+using PmdThing.Components;
 using PmdThing.Components.Networking.Rokon;
 using PmdThing.Containers;
 using PmdThing.Core;
@@ -9,26 +10,32 @@ public class Program
 
     public static void Main(string[] args)
     {
-        var server = new Thread(Server);
+        var server = new Thread(() => Server(args));
         server.Start();
     }
 
-    private static void Server()
+    private static void Server(string[] commandLineArgs)
     {
-        var game = PmdGameBase.Create(1280, 720, "ksjdfnsfklm;dsk");
+        var game = PmdGameBase.Create(1280, 720, "ksjdfnsfklm;dsk", commandLineArgs);
+        game.RegisterComponent<RokonSocketServer>(game.BaseContainer, true, out var server, 2312);
 
         // Make a generic shared container. Was going to do this in GameBase but decided not to.
         // TODO: Maybe removed the shared components feature and enforce passing around components from a main container like thi
 
-        var tmxLoader = new TmxTileProvider(@"C:\Users\Joshua Passmore\source\repos\PmdThing\PmdThing\TileSets\142map.tmx");
+        var tmxLoader = new TmxTileProvider(@"TileSets\142map.tmx");
         game.RegisterContainer<TiledWorld>(out var tiledGame, tmxLoader);
 
-        game.RegisterComponent<Camera>(game.BaseContainer, false, out _);
+        if (!game.Framework
+                .Graphics
+                .GetCapabilities()
+                .Headless)
+        {
+            game.RegisterComponent<Camera>(game.BaseContainer, false, out _);
+        }
+        
 
         game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Vulpix, true);
         game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Eevee, false);
-
-        game.RegisterComponent<RokonSocketServer>(game.BaseContainer, true, out var server, 2312);
 
         game.Start();
         server.Cleanup();

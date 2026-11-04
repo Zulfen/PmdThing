@@ -1,22 +1,34 @@
 ﻿using DotTiled;
 using PmdThing.Containers;
 using PmdThing.Core;
+using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
 
 namespace PmdThing.Components
 {
+    [PmdServerSync]
     public class TiledTransform : PmdListenableComponent<PmdTileRef>
     {
 
+        [PmdServerSync]
         public PmdListenableValue<PmdTileRef> Destination;
+
+        [PmdServerSync]
         public PmdListenableValue<PmdConstants.AnimationDirection> Direction;
 
         private readonly Transform _transform;
-        private readonly TiledWorldRenderer _renderer;
+        private readonly TiledWorld _world;
 
+        [PmdServerSync]
         public PmdListenableValue<bool> CanMove;
+
+        [PmdServerSync]
         public PmdListenableValue<bool> Moving;
         private float _speed;
+
+        public TiledTransform(PmdComponentConfig config, PmdTileRef tile) : this(config, tile.Row, tile.Column)
+        {
+        }
 
         public TiledTransform(PmdComponentConfig config, int column, int row) : base(config, new PmdTileRef(row, column))
         {
@@ -30,7 +42,7 @@ namespace PmdThing.Components
             RegisterIfNotExist(true, out _transform, 0, 0);
 
             // TODO: Account for multiple tiled worlds
-            _renderer = GetSharedComponent<TiledWorldRenderer>();
+            _world = GetBaseContainer<TiledWorld>();
 
             GetSharedComponent<Timer>()
                .RegisterTask(TiledPosition_FixedUpdate);
@@ -61,7 +73,7 @@ namespace PmdThing.Components
 
         public void TiledPosition_FixedUpdate()
         {
-            var destVector = _renderer.GetWorldSpace(Destination.Get());
+            var destVector = _world.GetWorldSpace(Destination.Get());
             var distanceVector = destVector - _transform.ComponentValue;
             var step = _speed; //* Framework.Graphics.GetDelta();
 
@@ -88,7 +100,7 @@ namespace PmdThing.Components
         protected override void SetValue(PmdTileRef tile)
         {
             base.SetValue(tile);
-            _transform.ComponentValue = _renderer.GetWorldSpace(tile);
+            _transform.ComponentValue = _world.GetWorldSpace(tile);
         }
 
     }
