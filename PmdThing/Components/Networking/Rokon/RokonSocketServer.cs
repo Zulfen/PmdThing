@@ -41,7 +41,7 @@ namespace PmdThing.Components.Networking.Rokon
                     var id = Register<RokonServerConnection>(true, out var connection, socket);
                     OnClientConnected(connection, id);
 
-                    await ProcessLoop(connection);
+                    _ = ProcessLoop(connection);
 
                 }
                 catch (SocketException ex)

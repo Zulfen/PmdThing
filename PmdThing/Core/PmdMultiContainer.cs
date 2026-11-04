@@ -7,9 +7,9 @@ namespace PmdThing.Core
 {
     public class PmdMultiContainer(PmdContainerConfig config) : PmdContainer(config)
     {
+        private readonly PmdContainerConfig _config = config;
         private readonly PmdContainerRegistry _containerRegistry = new();
 
-        private PmdContainerId _containerCounter;
         private readonly Dictionary<PmdContainerId, PmdContainer> _runtimeContainers = new();
 
         public event Action<PmdContainerId, PmdContainer, object[]?>? ContainerRegistered;
@@ -18,8 +18,8 @@ namespace PmdThing.Core
         public PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, out PmdContainer instance, params object[]? arguments)
         {
             // ReSharper disable once UseSymbolAlias
-            var newId = id ?? Random.Shared.Next(1, int.MaxValue);
-            var newConfig = new PmdContainerConfig(config.Base, Framework, this, id ?? _containerCounter);
+            var newId = id ?? Random.Shared.Next(2, int.MaxValue);
+            var newConfig = new PmdContainerConfig(_config.Base, Framework, this, newId);
 
             object[] completeArgs;
             if (arguments != null)
@@ -34,6 +34,7 @@ namespace PmdThing.Core
                 completeArgs = [newConfig];
             }
 
+            // This big for loop makes sure serialized enums are handled for constructors if needed (they get sent as ints)
             ConstructorInfo? containerConstructor = null;
             foreach (var constructor in containerType.GetConstructors())
             {
@@ -88,7 +89,6 @@ namespace PmdThing.Core
             if (containerInstance is PmdContainer container)
             {
                 instance = container;
-                _containerCounter++;
 
                 if (container.AsyncInit)
                 {
@@ -147,14 +147,6 @@ namespace PmdThing.Core
             return _runtimeContainers.TryGetValue(id, out var container) ? container : throw new ArgumentException($"Container with ID {id} has not been registered.");
         }
 
-        public List<TContainer> GetAllContainers<TContainer>() where TContainer : PmdContainer
-        {
-            return _containerRegistry
-                .GetAll(typeof(TContainer))
-                .Select(GetContainer<TContainer>)
-                .ToList();
-        }
-
         public List<PmdContainerId> GetAllContainers()
         {
             return [.. _containerRegistry
@@ -170,7 +162,6 @@ namespace PmdThing.Core
             {
                 container.GetAllComponents()
                     .ForEach(entry => Base.DeregisterComponent(entry.Type, entry.Id, false));
-                _containerCounter--;
             }
         }
 

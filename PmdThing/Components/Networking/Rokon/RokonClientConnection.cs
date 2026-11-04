@@ -38,7 +38,9 @@ namespace PmdThing.Components.Networking.Rokon
                     _socket.SendTimeout = 1000;
 
                     OnConnect();
-                    await ProcessLoop();
+                    _ = Task.Run(ProcessLoop);
+
+                    await base.Init();
 
                 }
                 catch (SocketException ex)
@@ -47,7 +49,6 @@ namespace PmdThing.Components.Networking.Rokon
                     _socket.Close();
                 }
             }
-           
         }
 
         public override IPAddress GetEndpoint()

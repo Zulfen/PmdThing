@@ -28,7 +28,11 @@ public class Program
             game.RegisterContainer<TiledWorld>(out _,tmxLoader);
 
             game.RegisterComponent<TileQuery>(game.BaseContainer, true, out var tileQueryHandler);
+            game.RegisterComponent<ContainersQuery>(game.BaseContainer, true, out var containersQueryHandler, server);
+            game.RegisterComponent<GetComponentsQuery>(game.BaseContainer, true, out var componentsQuery, server);
             server.RegisterHandler(QueryType.Tile, tileQueryHandler);
+            server.RegisterHandler(QueryType.ContainerCount, containersQueryHandler);
+            server.RegisterHandler(QueryType.SendComponents, componentsQuery);
         }
         else
         {

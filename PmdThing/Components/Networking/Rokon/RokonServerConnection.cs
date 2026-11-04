@@ -1,6 +1,8 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using PmdThing.Core;
+using PmdThing.Core.Network;
+using PmdThing.Core.Network.Rokon;
 
 namespace PmdThing.Components.Networking.Rokon
 {
@@ -24,6 +26,15 @@ namespace PmdThing.Components.Networking.Rokon
                 : endpoint.Address;
         }
 
+        public override IPAddress GetEndpoint()
+        {
+            return _ip.MapToIPv4();
+        }
+
+        public override void SendPacket(PmdPacket.PacketDto packet)
+        {
+            _server.SendPacket(packet, this);
+        }
 
 
         public override void Cleanup()
@@ -43,10 +54,6 @@ namespace PmdThing.Components.Networking.Rokon
             }
         }
 
-        public override IPAddress GetEndpoint()
-        {
-            return _ip;
-        }
-
+     
     }
 }

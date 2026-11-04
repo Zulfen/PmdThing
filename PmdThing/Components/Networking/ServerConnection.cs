@@ -1,10 +1,14 @@
 ﻿using PmdThing.Core;
+using PmdThing.Core.Network;
+using PmdThing.Core.Network.Rokon;
 
 namespace PmdThing.Components.Networking
 {
-    public abstract class ServerConnection<TAddr>(PmdComponentConfig config) : PmdComponent(config)
+    public abstract class ServerConnection<TAddr>(PmdComponentConfig config) : PmdComponent(config), IPmdServerConnection
     {
         public readonly CancellationTokenSource ShutdownTokenSrc = new();
+        
+        public bool Ready { get; private set; }
 
         public abstract TAddr? GetEndpoint();
 
@@ -19,6 +23,13 @@ namespace PmdThing.Components.Networking
         {
             Running = false;
             ShutdownTokenSrc.Cancel();
+        }
+
+        public abstract void SendPacket(PmdPacket.PacketDto packet);
+
+        public void SignalReady()
+        {
+            Ready = true;
         }
     }
 }

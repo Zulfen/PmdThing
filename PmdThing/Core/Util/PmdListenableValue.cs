@@ -14,9 +14,10 @@
 
         private T _data;
         public event Action<T, T>? Changed;
-        private bool _hasChanged = true;
 
-        public PmdListenableValue(PmdComponent component, T initialData, ProcessingOrder order = ProcessingOrder.Update)
+        private bool _hasChanged;
+
+        public PmdListenableValue(PmdComponent component, T initialData, string? tag = null, ProcessingOrder order = ProcessingOrder.Update)
         {
             _parent = component;
             _processingOrder = order;
@@ -31,7 +32,7 @@
 
         public void SetChanged(bool changed, T newValue)
         {
-            _hasChanged = true;
+            _hasChanged = changed;
             _parent.SubmitTask(() => Changed?.Invoke(newValue, _data), _processingOrder);
             _data = newValue;
         }

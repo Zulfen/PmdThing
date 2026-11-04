@@ -3,14 +3,16 @@ using PmdThing.Containers;
 using PmdThing.Core;
 using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
+using System.Collections.Concurrent;
 using System.Reflection;
+using PmdThing.Core.Network;
 using PmdComponentId = System.Int32;
 using PmdContainerId = System.Int32;
 
 namespace PmdThing.Components.Networking
 {
     // TODO: make this a container
-    public abstract class GameServer<TAddr, TConn> : PmdNetworkHandler where TAddr : notnull where TConn : ServerConnection<TAddr>
+    public abstract class GameServer<TAddr, TConn> : PmdNetworkHandler, IPmdGameServer where TAddr : notnull where TConn : ServerConnection<TAddr>
     {
 
         public event Action<TConn>? ClientConnected;
@@ -19,7 +21,9 @@ namespace PmdThing.Components.Networking
         private readonly Dictionary<TAddr, TConn> _connections = [];
         private readonly Dictionary<QueryType, QueryHandler> _queryHandlers = [];
 
-        private readonly Dictionary<PmdContainerId, PmdPacket.PacketDto> _containerTracker = [];
+        private readonly ConcurrentDictionary<PmdComponentId, PmdComponent> _syncComponents = [];
+        private readonly ConcurrentDictionary<PmdContainerId, PmdPacket.PacketDto> _containerTracker = [];
+
         private readonly Dictionary<TConn, PmdComponentId> _connectionIds = [];
 
         protected readonly CancellationTokenSource ShutdownTokenSrc = new();
@@ -35,20 +39,7 @@ namespace PmdThing.Components.Networking
         protected GameServer(PmdComponentConfig config) : base(config, typeof(PmdServerSync), PmdPacketSource.Server)
         {
             Base.BaseContainer.ContainerRegistered += RegisterContainer;
-            ClientConnected += GameServer_ClientConnected;
             Instance = this;
-        }
-
-        private void GameServer_ClientConnected(TConn connection)
-        {
-            foreach (var id in Base.BaseContainer.GetAllContainers())
-            {
-                if (_containerTracker.TryGetValue(id, out var packet))
-                {
-                    SendPacket(packet, connection);
-                    Framework.Logger.LogDebug("Sending container update ({type}) ({action}) to client: [{addr}]", packet.Type, packet.PmdPacketType, connection.GetEndpoint());
-                }
-            }
         }
 
         private void RegisterContainer(PmdContainerId id, PmdContainer container, object[]? arguments)
@@ -72,9 +63,15 @@ namespace PmdThing.Components.Networking
                 Source = PmdPacketSource.Server,
             };
 
-            _containerTracker.Add(id, packet);
+            _containerTracker.TryAdd(id, packet);
 
             SendToAll(packet);
+        }
+
+        public override void RegisterSyncedComponent(PmdComponentId id, PmdComponent component, bool unique, PmdContainer parent, string tag)
+        {
+            base.RegisterSyncedComponent(id, component, unique, parent, tag);
+            _syncComponents.TryAdd(id, component);
         }
 
         protected abstract void SendBytes(TConn connection, byte[] bytes);
@@ -98,7 +95,25 @@ namespace PmdThing.Components.Networking
 
                 SubmitTask(() => ClientConnected?.Invoke(connection), ProcessingOrder.Update);
 
-                SubmitTask(() => Base.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Eevee, false), ProcessingOrder.Update);
+
+                foreach (var containerId in Base.BaseContainer.GetAllContainers())
+                {
+                    if (_containerTracker.TryGetValue(containerId, out var packet))
+                    {
+                        SendPacket(packet, connection);
+                        Framework.Logger.LogDebug("Sending container update ({type}) ({action}) to client: [{addr}]", packet.Type, packet.PmdPacketType, connection.GetEndpoint());
+                    }
+                }
+
+                // debug
+                SubmitTask(() =>
+                {
+                    Base.RegisterContainer<TestPokemon>(out var vee, PmdConstants.Pokemon.Eevee, false);
+
+                    var tile = vee.GetComponent<TiledTransform>();
+                    tile.MoveTo(new PmdTileRef(5, 5));
+
+                }, ProcessingOrder.Update);
             }
         }
 
@@ -140,9 +155,11 @@ namespace PmdThing.Components.Networking
 
         public override void ListenableValueChanged(dynamic current, dynamic previous, PmdPacket.PacketDto packetDto)
         {
-            var tag = GetTagForId(packetDto.Id);
-            packetDto.Data = [current, tag];
-            SendToAll(packetDto);
+            packetDto.Data = [current];
+            foreach (var connection in _connections.Values.Where(connection => connection.Ready))
+            {
+                SendPacket(packetDto, connection);
+            }
         }
 
         public void SendToAll(PmdPacket.PacketDto packetDto)
@@ -199,17 +216,7 @@ namespace PmdThing.Components.Networking
                             {
                                 case PmdPacketType.UpdateComponent:
 
-                                    if (PmdTypeUtils.IsGenericClass(packet.Type, typeof(PmdListenableValue<>)) && packet.Attribute != null)
-                                    {
-                                        if (packet.Data == null || packet.Data.Length < 2 || packet.ParentContainer == null)
-                                        {
-                                            connection.Cleanup();
-                                            continue;
-                                        }
-
-                                        SubmitTask(() => UpdateListenableValue(packet.ParentContainer.Value, (string)packet.Data![1], packet.Attribute, packet.Data![0]), ProcessingOrder.Update);
-                                    }
-                                    else if (PmdTypeUtils.IsGenericClass(packet.Type, typeof(PmdListenableComponent<>)))
+                                    if (PmdTypeUtils.IsGenericClass(packet.Type, typeof(PmdListenableComponent<>)))
                                     {
                                         if (packet.Attribute == null || packet.ParentContainer == null)
                                         {
@@ -254,7 +261,7 @@ namespace PmdThing.Components.Networking
                                     {
                                         if (_queryHandlers.TryGetValue(reqType, out var handler))
                                         {
-                                            var response = handler.Handle(packet.Data![0]);
+                                            var response = handler.Handle(packet.Data?[0], connection);
                                             SendQueryResponse(connection, packet, response);
                                         }
                                         else
@@ -269,6 +276,7 @@ namespace PmdThing.Components.Networking
 
                                     break;
 
+                                case PmdPacketType.UpdateValue: 
                                 case PmdPacketType.AddContainer:
                                 case PmdPacketType.DeleteContainer:
                                 default:
@@ -318,6 +326,16 @@ namespace PmdThing.Components.Networking
             SendBytes(connection, packetBytes);
         }
 
+        public IEnumerable<KeyValuePair<PmdComponentId, PmdComponent>> GetSyncComponents()
+        {
+            return _syncComponents;
+        }
+
+        public int GetSyncContainerCount()
+        {
+            return _containerTracker.Count;
+        }
+
         public override void Cleanup()
         {
             Running = false;
@@ -328,5 +346,7 @@ namespace PmdThing.Components.Networking
                 connection.Cleanup();
             }
         }
+
+        
     }
 }

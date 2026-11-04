@@ -2,6 +2,7 @@
 using System.Drawing;
 using PmdThing.Containers;
 using PmdThing.Core;
+using PmdThing.Core.Network;
 using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
 
@@ -40,10 +41,10 @@ namespace PmdThing.Components.Networking.QueryHandlers
             throw new NotImplementedException();
         }
 
-        public override dynamic? Handle(dynamic requestData)
+        public override dynamic? Handle(dynamic? requestData, IPmdServerConnection connection)
         {
             
-            switch (requestData.Type)
+            switch (requestData?.Type)
             {
                 case RequestType.SheetLocation:
 
@@ -82,9 +83,5 @@ namespace PmdThing.Components.Networking.QueryHandlers
             return null;
         }
 
-        public override Type GetDataType()
-        {
-            return typeof(TileRequest);
-        }
     }
 }

@@ -25,7 +25,7 @@ namespace PmdThing.Core.Network.Rokon
             }
         }
 
-        public void RegisterSyncedComponent(PmdComponentId id, PmdComponent component, bool unique, PmdContainer parent, string tag)
+        public virtual void RegisterSyncedComponent(PmdComponentId id, PmdComponent component, bool unique, PmdContainer parent, string tag)
         {
             _idTags.Add(id, new TagEntry(tag, parent.Id));
             _tagIds.Add(new TagEntry(tag, parent.Id), id);
@@ -47,10 +47,11 @@ namespace PmdThing.Core.Network.Rokon
                     Type = componentType,
                     Attribute = field.Name,
                     DataType = field.FieldType.GenericTypeArguments[0],
-                    PmdPacketType = PmdPacketType.UpdateComponent,
+                    PmdPacketType = PmdPacketType.UpdateValue,
                     Unique = unique,
                     Source = packetSource,
-                    ParentContainer = parent.Id
+                    ParentContainer = parent.Id,
+                    Tag = tag
                 };
 
                 var changedEvent = field.FieldType.GetEvent("Changed");
@@ -66,6 +67,9 @@ namespace PmdThing.Core.Network.Rokon
                 if (tagEntry == null) throw new InvalidOperationException("Tag for listenable component not found. Register only using RegisterSyncedComponent.");
 
                 if (!componentType.IsDefined(syncAttribute)) return;
+                var syncAttribInstance = Attribute.GetCustomAttribute(componentType, typeof(PmdServerSync)) as PmdServerSync;
+                
+                if (!syncAttribInstance?.UpdateValue == false) return;
 
                 var packetDto = new PacketDto
                 {
@@ -75,7 +79,7 @@ namespace PmdThing.Core.Network.Rokon
                     PmdPacketType = PmdPacketType.UpdateComponent,
                     DataType = componentType.BaseType?.GenericTypeArguments[0],
                     Source = packetSource,
-                    Attribute = tagEntry.Tag,
+                    Tag = tagEntry.Tag,
                     ParentContainer = parent.Id
                 };
 
@@ -83,6 +87,7 @@ namespace PmdThing.Core.Network.Rokon
                 if (changedEvent == null) return;
 
                 SubscribeEvent(changedEvent, packetDto, component);
+
             }
         }
 
@@ -105,8 +110,7 @@ namespace PmdThing.Core.Network.Rokon
         private void SubscribeEvent(EventInfo info, PacketDto packetDto, object target)
         {
             var genericHandler = typeof(ListenableHandler<>);
-            var dataType = packetDto.DataType;
-            var dataHandler = genericHandler.MakeGenericType(dataType!);
+            var dataHandler = genericHandler.MakeGenericType(packetDto.DataType!);
 
             var handlerMethod = dataHandler.GetMethod("Changed", BindingFlags.Public | BindingFlags.Instance);
 

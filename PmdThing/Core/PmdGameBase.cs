@@ -2,7 +2,6 @@
 using PmdThing.Core.Util;
 using PmdThing.Core.Util.Structures;
 using System.Collections.Concurrent;
-using PmdThing.Core.Network.Rokon;
 using PmdComponentId = System.Int32;
 using PmdContainerId = System.Int32;
 
@@ -52,7 +51,7 @@ namespace PmdThing.Core
             _instance = this;
             Framework = framework;
 
-            BaseContainer = new PmdMultiContainer(new PmdContainerConfig(this, Framework, null, 0));
+            BaseContainer = new PmdMultiContainer(new PmdContainerConfig(this, Framework, null, 1));
             Init();
         }
 

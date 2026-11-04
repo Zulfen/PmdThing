@@ -1,5 +1,4 @@
-﻿using System.Reflection;
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace PmdThing.Core.Util
 {
@@ -18,6 +17,15 @@ namespace PmdThing.Core.Util
             }
 
             return false;
+        }
+
+        // TODO: kinda slow... type cache?
+        public static Type? FindType(string fullName)
+        {
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a => !a.IsDynamic)
+                .SelectMany(a => a.GetTypes())
+                .FirstOrDefault(t => t.FullName == fullName);
         }
 
         // Source - https://stackoverflow.com/a/1750024

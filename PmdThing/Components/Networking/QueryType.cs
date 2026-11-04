@@ -2,6 +2,8 @@
 {
     public enum QueryType
     {
-        Tile
+        Tile,
+        ContainerCount,
+        SendComponents
     }
 }

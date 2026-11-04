@@ -5,6 +5,7 @@
         AddComponent,
         RemoveComponent,
         UpdateComponent,
+        UpdateValue,
         Query,
         AddContainer,
         DeleteContainer,
