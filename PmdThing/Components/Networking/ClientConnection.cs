@@ -199,9 +199,9 @@ namespace PmdThing.Components.Networking
 
                             if (packet.Type.IsSubclassOf(typeof(PmdContainer)))
                             {
-                                if (packet.ParentContainer.HasValue && packet.ParentContainer.Value != Base.BaseContainer.Id)
+                                if (packet.ParentContainer.HasValue)
                                 {
-                                    var parentContainer = Base.GetContainer(packet.ParentContainer.Value);
+                                    var parentContainer = packet.ParentContainer.Value != 0 ? Base.GetContainer(packet.ParentContainer.Value) : Base.BaseContainer;
                                     if (parentContainer is PmdMultiContainer multiContainer)
                                     {
                                         SubmitTask(() => multiContainer.RegisterContainer(packet.Id, packet.Type, out _, packet.Data!), ProcessingOrder.Update);

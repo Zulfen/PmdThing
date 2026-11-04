@@ -69,7 +69,7 @@ namespace PmdThing.Components.Networking
                 PmdPacketType = PmdPacketType.AddContainer,
                 Id = id,
                 Unique = true,
-                ParentContainer = container.Parent?.Id,
+                ParentContainer = container.Parent?.Id ?? Base.BaseContainer.Id,
                 Source = PmdPacketSource.Server,
             };
 

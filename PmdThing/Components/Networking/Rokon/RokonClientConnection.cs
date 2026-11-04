@@ -30,6 +30,7 @@ namespace PmdThing.Components.Networking.Rokon
                 try
                 {
                     _socket = new Socket(_ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                    _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
                     await _socket.ConnectAsync(_ip, _port);
                     OnConnect();

@@ -17,7 +17,8 @@ namespace PmdThing.Core
 
         public PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, out PmdContainer instance, params object[]? arguments)
         {
-            var newId = id ?? _containerCounter;
+            // ReSharper disable once UseSymbolAlias
+            var newId = id ?? Random.Shared.Next(1, int.MaxValue);
             var newConfig = new PmdContainerConfig(config.Base, Framework, this, id ?? _containerCounter);
 
             object[] completeArgs;
