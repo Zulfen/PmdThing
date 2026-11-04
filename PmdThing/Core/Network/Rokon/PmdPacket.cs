@@ -1,16 +1,20 @@
-﻿using System.Diagnostics;
+﻿using PmdThing.Core.Util;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
-using PmdThing.Core.Util;
 
 namespace PmdThing.Core.Network.Rokon;
 
 using MessagePack;
 using System;
+using System.Buffers;
 
 [MessagePackObject]
 public struct PmdPacket()
 {
+
+    private static readonly MessagePackSerializerOptions Options =
+        MessagePackSerializerOptions.Standard;
 
     public record PacketDto
     {
@@ -26,7 +30,7 @@ public struct PmdPacket()
     }
 
     [Key(0)]
-    public string Header = "RK";
+    public static readonly string Header = "RK";
 
     [Key(1)]
     public int ProtocolVersion = 1;
@@ -97,7 +101,7 @@ public struct PmdPacket()
         };
 
        
-        return MessagePackSerializer.Serialize(packet);
+        return MessagePackSerializer.Serialize(packet, Options);
         
     }
 
@@ -121,68 +125,77 @@ public struct PmdPacket()
     }
 
 
-    public static PacketDto? Decode(byte[] packetBytes)
+    public static async Task<List<PacketDto>> DecodeStreamAsync(byte[] streamBytes, CancellationToken cancellationToken)
     {
-        if (packetBytes.Length == 0)
+        var packetDtos = new List<PacketDto>();
+        if (streamBytes.Length == 0)
         {
-            return null;
-        }
-        
-        if (packetBytes[0] == 0)
-        {
-            return null;
+            return packetDtos;
         }
 
-        //var options = MessagePackSerializerOptions.Standard
-            //.WithSecurity(MessagePackSecurity.UntrustedData);
-
-        var packet = MessagePackSerializer.Deserialize<PmdPacket>(packetBytes);
-
-        var componentType = FindType(packet.ComponentType);
-        if (componentType == null) throw new InvalidDataException($"Could not find component type {packet.ComponentType}");
-
-        if (!TypeCheck(componentType, true))
+        var rawPackets = new List<PmdPacket>();
+        using (var stream = new MemoryStream(streamBytes))
         {
-            throw new InvalidDataException($"Given component type isn't valid: {packet.ComponentType}");
-        }
-
-        Type? dataType = null;
-        if (packet.DataType != null)
-        {
-            dataType = FindType(packet.DataType);
-            if (dataType == null) throw new InvalidDataException($"Could not find data type {packet.DataType}");
-
-            if (!TypeCheck(dataType, true))
+            using (var streamReader = new MessagePackStreamReader(stream))
             {
-                throw new InvalidDataException($"Given data type isn't valid: {packet.DataType}");
+                while (await streamReader.ReadAsync(cancellationToken) is { } msgpack)
+                {
+                    rawPackets.Add(MessagePackSerializer.Deserialize<PmdPacket>(msgpack, Options, cancellationToken));
+                }
             }
-        }
-        
-        var packetDto = new PacketDto
-        {
-            Id = packet.ComponentId,
-            ParentContainer = packet.ParentContainer,
-            Type = componentType,
-            PmdPacketType = packet.Type,
-            Attribute = packet.Attribute,
-            Unique = packet.Unique,
-            Source = packet.Source
-        };
 
-        if (dataType != null)
+        }
+
+        foreach (var rawPacket in rawPackets)
         {
-            var result = JsonSerializer.Deserialize(packet.Data, dataType);
-            if (result != null)
+            var componentType = FindType(rawPacket.ComponentType);
+            if (componentType == null) throw new InvalidDataException($"Could not find component type {rawPacket.ComponentType}");
+
+            if (!TypeCheck(componentType, true))
             {
-                packetDto.Data = [result];
+                throw new InvalidDataException($"Given component type isn't valid: {rawPacket.ComponentType}");
             }
-        }
-        else
-        {
-            var asJson = JsonSerializer.Deserialize<JsonElement[]>(packet.Data);
-            packetDto.Data = PmdTypeUtils.ParseJsonElements(asJson);
+
+            Type? dataType = null;
+            if (rawPacket.DataType != null)
+            {
+                dataType = FindType(rawPacket.DataType);
+                if (dataType == null) throw new InvalidDataException($"Could not find data type {rawPacket.DataType}");
+
+                if (!TypeCheck(dataType, true))
+                {
+                    throw new InvalidDataException($"Given data type isn't valid: {rawPacket.DataType}");
+                }
+            }
+
+            var packetDto = new PacketDto
+            {
+                Id = rawPacket.ComponentId,
+                ParentContainer = rawPacket.ParentContainer,
+                Type = componentType,
+                PmdPacketType = rawPacket.Type,
+                Attribute = rawPacket.Attribute,
+                Unique = rawPacket.Unique,
+                Source = rawPacket.Source
+            };
+
+            if (dataType != null)
+            {
+                var result = JsonSerializer.Deserialize(rawPacket.Data, dataType);
+                if (result != null)
+                {
+                    packetDto.Data = [result];
+                }
+            }
+            else
+            {
+                var asJson = JsonSerializer.Deserialize<JsonElement[]>(rawPacket.Data);
+                packetDto.Data = PmdTypeUtils.ParseJsonElements(asJson);
+            }
+
+            packetDtos.Add(packetDto);
         }
 
-        return packetDto;
+        return packetDtos;
     }
 }

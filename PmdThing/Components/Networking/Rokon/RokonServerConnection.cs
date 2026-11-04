@@ -9,6 +9,9 @@ namespace PmdThing.Components.Networking.Rokon
         private readonly IPAddress _ip;
         private bool _socketClosed;
 
+        public Socket Socket { get; }
+        public readonly Lock SocketLock = new();
+
         private readonly RokonSocketServer _server;
 
         public RokonServerConnection(PmdComponentConfig config, Socket socket) : base(config)
@@ -21,22 +24,23 @@ namespace PmdThing.Components.Networking.Rokon
                 : endpoint.Address;
         }
 
-        public Socket Socket { get; }
+
 
         public override void Cleanup()
         {
-
-            if (!_socketClosed)
+            lock (SocketLock)
             {
-                base.Cleanup();
-                Socket.Shutdown(SocketShutdown.Both);
-                Socket.Close();
+                if (!_socketClosed)
+                {
+                    base.Cleanup();
+                    Socket.Shutdown(SocketShutdown.Both);
+                    Socket.Close(1000);
 
-                _socketClosed = true;
+                    _socketClosed = true;
 
-                _server.Disconnect(this);
+                    _server.Disconnect(this);
+                }
             }
-
         }
 
         public override IPAddress GetEndpoint()

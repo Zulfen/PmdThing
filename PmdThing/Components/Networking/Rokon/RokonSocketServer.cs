@@ -1,9 +1,7 @@
-﻿using System.Diagnostics;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using PmdThing.Core;
 using System.Net;
 using System.Net.Sockets;
-using System.Reflection.Metadata.Ecma335;
 
 namespace PmdThing.Components.Networking.Rokon
 {
@@ -15,26 +13,21 @@ namespace PmdThing.Components.Networking.Rokon
 
         public RokonSocketServer(PmdComponentConfig config, int port) : base(config)
         {
+            AsyncInit = true;
+
             _port = port;
             var ipHost = Dns.GetHostEntry("localhost");
             var ipAddr = ipHost.AddressList[0];
             var localEndPoint = new IPEndPoint(ipAddr, _port);
 
             _serverSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            _serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             _serverSocket.Bind(localEndPoint);
- 
 
-            var acceptThread = new Thread(AcceptConnLoop)
-            {
-                Name = "ServerListen"
-            };
-            acceptThread.Start();
 
             Framework.Logger.LogInformation("Listening on [{ip}:{port}]", ipAddr.MapToIPv4(), port);
         }
 
-        private void AcceptConnLoop()
+        public override async Task Init()
         {
             while (Running)
             {
@@ -42,27 +35,13 @@ namespace PmdThing.Components.Networking.Rokon
                 {
 
                     _serverSocket.Listen(10);
-                    var socket = _serverSocket.Accept();
+                    var socket = await _serverSocket.AcceptAsync();
+                    socket.SendTimeout = 1000;
 
                     var id = Register<RokonServerConnection>(true, out var connection, socket);
                     OnClientConnected(connection, id);
 
-                    var processThread = new Thread(() => ProcessLoop(connection))
-                    {
-                        Name = $"Process ({socket.RemoteEndPoint})"
-                    };
-                    var sendThread = new Thread(() => SendLoop(connection))
-                    {
-                        Name = $"Send ({socket.RemoteEndPoint})"
-                    };
-                    var receiveThread = new Thread(() => ReceiveLoop(connection))
-                    {
-                        Name = $"Receive ({socket.RemoteEndPoint})"
-                    };
-
-                    processThread.Start();
-                    sendThread.Start();
-                    receiveThread.Start();
+                    await ProcessLoop(connection);
 
                 }
                 catch (SocketException ex)
@@ -73,21 +52,21 @@ namespace PmdThing.Components.Networking.Rokon
             }
         }
 
+
         protected override byte[] ReceiveBytes(RokonServerConnection connection)
         {
-            var buffer = new byte[2048];
+            var buffer = new byte[1024];
 
             try
             {
-                if (connection.Running)
-                {
-                    var result = connection.Socket.Receive(buffer);
-                    if (result == 0) connection.Cleanup();
 
-                    var actualData = new byte[result];
-                    Array.Copy(buffer, actualData, result);
-                    return actualData;
-                }
+                var result = connection.Socket.Receive(buffer);
+                if (result == 0) connection.Cleanup();
+
+                var actualData = new byte[result];
+                Array.Copy(buffer, actualData, result);
+                return actualData;
+
             }
             catch (SocketException ex)
             {
@@ -103,10 +82,12 @@ namespace PmdThing.Components.Networking.Rokon
         {
             try
             {
-                if (connection.Running)
+
+                lock (connection.SocketLock)
                 {
                     connection.Socket.Send(bytes);
                 }
+
             }
             catch (SocketException ex)
             {

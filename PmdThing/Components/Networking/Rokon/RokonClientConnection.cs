@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using PmdThing.Core;
-using PmdThing.Core.Network.Rokon;
 using System.Net;
 using System.Net.Sockets;
 
@@ -13,6 +12,7 @@ namespace PmdThing.Components.Networking.Rokon
         private Socket? _socket;
 
         private bool _socketClosed;
+        private readonly Lock _socketLock = new();
 
         public RokonClientConnection(PmdComponentConfig config, string host, int port) : base(config)
         {
@@ -27,26 +27,24 @@ namespace PmdThing.Components.Networking.Rokon
         {
             while (!Connected)
             {
+                _socket = new Socket(_ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                _socket.NoDelay = true;
+
                 try
                 {
-                    _socket = new Socket(_ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                    _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
                     await _socket.ConnectAsync(_ip, _port);
+                    _socket.SendTimeout = 1000;
+
                     OnConnect();
-
-                    var sendThread = new Thread(SendLoop);
-                    var receiveThread = new Thread(ReceiveLoop);
-                    var processThread = new Thread(ProcessLoop);
-
-                    sendThread.Start();
-                    receiveThread.Start();
-                    processThread.Start();
+                    await ProcessLoop();
 
                 }
                 catch (SocketException ex)
                 {
                     Framework.Logger.LogWarning("Failed to connect to [{address}:{port}]: {exception}", GetEndpoint(), _port, ex.Message);
+                    _socket.Close();
                 }
             }
            
@@ -59,29 +57,29 @@ namespace PmdThing.Components.Networking.Rokon
 
         public override void Cleanup()
         {
-            if (!_socketClosed)
+            lock (_socketLock)
             {
-                base.Cleanup();
-                _socket?.Shutdown(SocketShutdown.Both);
-                _socket?.Close();
+                if (!_socketClosed)
+                {
+                    base.Cleanup();
+                    _socket?.Shutdown(SocketShutdown.Both);
+                    _socket?.Close(1000);
 
-                _socketClosed = true;
+                    _socketClosed = true;
+                }
             }
         }
 
+        // https://github.com/MessagePack-CSharp/MessagePack-CSharp/issues/388
         protected override byte[] ReceiveBytes()
         {
-            var buffer = new byte[2048];
+            var buffer = new byte[1024];
 
             try
             {
                 if (_socket?.Connected == true)
                 {
                     var result = _socket.Receive(buffer);
-                    if (result > buffer.Length)
-                    {
-                        Framework.Logger.LogWarning("Received more data than buffer size from [{address}]", GetEndpoint());
-                    }
 
                     if (result == 0)
                     {
@@ -108,7 +106,7 @@ namespace PmdThing.Components.Networking.Rokon
         {
             try
             {
-                if (_socket?.Connected == true)
+                lock (_socketLock)
                 {
                     _socket?.Send(bytes);
                 }
