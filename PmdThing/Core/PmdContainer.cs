@@ -62,6 +62,11 @@ namespace PmdThing.Core
             return (TComponent)Base.GetRuntimeComponent(id);
         }
 
+        protected PmdComponent GetOtherComponent(PmdComponentId id)
+        {
+            return Base.GetRuntimeComponent(id);
+        }
+
         public List<PmdComponentRegistry.PmdComponentEntry> GetAllComponents()
         {
             return _localTypes.GetAll();

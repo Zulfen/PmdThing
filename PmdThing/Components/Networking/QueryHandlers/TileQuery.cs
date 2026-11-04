@@ -5,6 +5,7 @@ using PmdThing.Core;
 using PmdThing.Core.Network;
 using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
+using PmdContainerId = System.Int32;
 
 namespace PmdThing.Components.Networking.QueryHandlers
 {
@@ -41,7 +42,7 @@ namespace PmdThing.Components.Networking.QueryHandlers
             throw new NotImplementedException();
         }
 
-        public override dynamic? Handle(dynamic? requestData, IPmdServerConnection connection)
+        public override dynamic? Handle(dynamic? requestData, PmdContainerId? parentContainerId, IPmdServerConnection connection)
         {
             
             switch (requestData?.Type)
@@ -67,15 +68,25 @@ namespace PmdThing.Components.Networking.QueryHandlers
                     break;
 
                 case RequestType.TileWidth:
-                    return _tiledWorld.TileProvider.GetTileWidth().Result;
+                    return _tiledWorld.TileProvider
+                        .GetTileWidth()
+                        .Result;
                 case RequestType.TileHeight:
-                    return _tiledWorld.TileProvider.GetTileHeight().Result;
+                    return _tiledWorld.TileProvider
+                        .GetTileHeight()
+                        .Result;
                 case RequestType.Rows:
-                    return _tiledWorld.TileProvider.GetRows().Result;
+                    return _tiledWorld.TileProvider
+                        .GetRows()
+                        .Result;
                 case RequestType.Columns:
-                    return _tiledWorld.TileProvider.GetColumns().Result;
+                    return _tiledWorld.TileProvider
+                        .GetColumns()
+                        .Result;
                 case RequestType.Path:
-                    return _tiledWorld.TileProvider.GetImagePath().Result;
+                    return _tiledWorld.TileProvider
+                        .GetImagePath()
+                        .Result;
                 default:
                     throw new InvalidEnumArgumentException();
             }

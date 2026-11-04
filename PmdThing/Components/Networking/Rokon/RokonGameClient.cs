@@ -5,7 +5,7 @@ using System.Net.Sockets;
 
 namespace PmdThing.Components.Networking.Rokon
 {
-    public class RokonClientConnection : ClientConnection<IPAddress>
+    public class RokonGameClient : GameClient<IPAddress>
     {
         private readonly int _port;
         private readonly IPAddress _ip;
@@ -14,7 +14,7 @@ namespace PmdThing.Components.Networking.Rokon
         private bool _socketClosed;
         private readonly Lock _socketLock = new();
 
-        public RokonClientConnection(PmdComponentConfig config, string host, int port) : base(config)
+        public RokonGameClient(PmdContainerConfig config, string host, int port) : base(config)
         {
             AsyncInit = true;
             _port = port;

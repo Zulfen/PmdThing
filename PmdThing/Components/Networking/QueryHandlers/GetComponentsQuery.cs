@@ -2,18 +2,20 @@
 using PmdThing.Core.Network;
 using PmdThing.Core.Network.Rokon;
 using PmdThing.Core.Util;
+using PmdContainerId = System.Int32;
 
 namespace PmdThing.Components.Networking.QueryHandlers
 {
-    public class GetComponentsQuery(PmdComponentConfig config, IPmdGameServer server) : QueryHandler(config)
+    public class GetComponentsQuery(PmdComponentConfig config) : QueryHandler(config)
     {
 
-        public override dynamic? Handle(dynamic? requestData, IPmdServerConnection connection)
+        public override dynamic? Handle(dynamic? requestData, PmdContainerId? parentContainerId, IPmdServerConnection connection)
         {
+            if (Server == null) return null;
             connection.SignalReady();
 
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator(it looks ugly...)
-            foreach (var componentEntry in server.GetSyncComponents())
+            foreach (var componentEntry in Server.GetSyncComponents())
             {
                 if (PmdTypeUtils.IsGenericClass(componentEntry.Value.GetType(), typeof(PmdListenableComponent<>)))
                 {
@@ -31,7 +33,7 @@ namespace PmdThing.Components.Networking.QueryHandlers
                         DataType = data.GetType(),
                         PmdPacketType = PmdPacketType.UpdateComponent,
                         Id = componentEntry.Key,
-                        ParentContainer = componentEntry.Value
+                        Parent = componentEntry.Value
                             .GetParent()?
                             .Id,
                         Unique = true,

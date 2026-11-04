@@ -2,6 +2,8 @@
 using PmdThing.Core.Util;
 using PmdThing.Core.Util.Structures;
 using System.Collections.Concurrent;
+using Microsoft.CodeAnalysis.Operations;
+using PmdThing.Core.Network;
 using PmdComponentId = System.Int32;
 using PmdContainerId = System.Int32;
 
@@ -43,6 +45,9 @@ namespace PmdThing.Core
         public readonly PmdMultiContainer BaseContainer;
         public event Action<PmdComponentId, PmdComponent, bool>? ComponentRegistered;
 
+        public IPmdGameServer? Server;
+        public IPmdGameClient? Client;
+
         private Thread? _mainThread;
         private readonly Lock _componentLock = new();
 
@@ -69,6 +74,36 @@ namespace PmdThing.Core
         public static PmdGameBase GetInstance()
         {
             return _instance ?? throw new ApplicationException("Could not get GameBase. Is it initialised?");
+        }
+
+        public void RegisterServer<TServer>(params object[] arguments) where TServer : IPmdGameServer
+        {
+            var serverType = typeof(TServer);
+            if (serverType.IsSubclassOf(typeof(PmdContainer)))
+            {
+                RegisterContainer(null, serverType, out var possibleServer, arguments);
+                if (possibleServer is TServer server)
+                {
+                    Server = server;
+                    return;
+                }
+            }
+            throw new InvalidCastException($"Could not create valid instance of class {typeof(TServer).Name}");
+        }
+
+        public void RegisterClient<TClient>(params object[] arguments) where TClient : IPmdGameClient
+        {
+            var clientType = typeof(TClient);
+            if (clientType.IsSubclassOf(typeof(PmdContainer)))
+            {
+                RegisterContainer(null, clientType, out var possibleClient, arguments);
+                if (possibleClient is TClient client)
+                {
+                    Client = client;
+                    return;
+                }
+            }
+            throw new InvalidCastException($"Could not create valid instance of class {typeof(TClient).Name}");
         }
 
         public PmdComponentId RegisterComponent(PmdComponentId? id, PmdComponent component, bool unique = true)
@@ -218,9 +253,9 @@ namespace PmdThing.Core
             return id;
         }
 
-        public PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, params object[]? arguments)
+        public PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, out PmdContainer instance, params object[]? arguments)
         {
-            return BaseContainer.RegisterContainer(id, containerType, out _, arguments);
+            return BaseContainer.RegisterContainer(id, containerType, out instance, arguments);
         }
 
         public TContainer GetContainer<TContainer>(PmdContainerId id) where TContainer : PmdContainer
@@ -230,6 +265,7 @@ namespace PmdThing.Core
 
         public PmdContainer GetContainer(PmdContainerId id)
         {
+            if (id == BaseContainer.Id) return BaseContainer;
             return BaseContainer.GetContainer(id);
         }
 

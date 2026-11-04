@@ -18,7 +18,7 @@ public struct PmdPacket()
         public required Type Type;
         public PmdPacketType PmdPacketType;
         public int Id;
-        public int? ParentContainer;
+        public int? Parent;
         public bool Unique;
         public string? Attribute;
         public Type? DataType;
@@ -47,7 +47,7 @@ public struct PmdPacket()
 
     [Key(9)] public required PmdPacketSource Source;
 
-    [Key(10)] public int? ParentContainer;
+    [Key(10)] public int? ParentId;
 
     [Key(11)] public string? Tag;
 
@@ -75,7 +75,7 @@ public struct PmdPacket()
             Unique = packetDto.Unique,
             DataType = dataName,
             Source = packetDto.Source,
-            ParentContainer = packetDto.ParentContainer,
+            ParentId = packetDto.Parent,
             Tag = packetDto.Tag
         };
 
@@ -142,7 +142,7 @@ public struct PmdPacket()
             var packetDto = new PacketDto
             {
                 Id = rawPacket.ComponentId,
-                ParentContainer = rawPacket.ParentContainer,
+                Parent = rawPacket.ParentId,
                 Type = componentType,
                 PmdPacketType = rawPacket.Type,
                 Attribute = rawPacket.Attribute,

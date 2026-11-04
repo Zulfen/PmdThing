@@ -6,7 +6,7 @@ using PmdContainerId = System.Int32;
 
 namespace PmdThing.Core.Network.Rokon
 {
-    public abstract class PmdNetworkHandler(PmdComponentConfig config, Type syncAttribute, PmdPacketSource packetSource) : PmdComponent(config)
+    public abstract class PmdNetworkHandler(PmdContainerConfig config, Type syncAttribute, PmdPacketSource packetSource) : PmdContainer(config)
     {
 
         public static PmdNetworkHandler? Instance { get; protected set; }
@@ -50,7 +50,7 @@ namespace PmdThing.Core.Network.Rokon
                     PmdPacketType = PmdPacketType.UpdateValue,
                     Unique = unique,
                     Source = packetSource,
-                    ParentContainer = parent.Id,
+                    Parent = parent.Id,
                     Tag = tag
                 };
 
@@ -80,7 +80,7 @@ namespace PmdThing.Core.Network.Rokon
                     DataType = componentType.BaseType?.GenericTypeArguments[0],
                     Source = packetSource,
                     Tag = tagEntry.Tag,
-                    ParentContainer = parent.Id
+                    Parent = parent.Id
                 };
 
                 var changedEvent = componentType.GetEvent("Changed");

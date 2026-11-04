@@ -4,6 +4,7 @@
     {
         Tile,
         ContainerCount,
-        SendComponents
+        SendComponents,
+        InputTileMove,
     }
 }

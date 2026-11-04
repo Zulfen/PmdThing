@@ -36,7 +36,7 @@ namespace PmdThing.Components.Networking
             set => Interlocked.Exchange(ref _running, Convert.ToInt64(value));
         }
 
-        protected GameServer(PmdComponentConfig config) : base(config, typeof(PmdServerSync), PmdPacketSource.Server)
+        protected GameServer(PmdContainerConfig config) : base(config, typeof(PmdServerSync), PmdPacketSource.Server)
         {
             Base.BaseContainer.ContainerRegistered += RegisterContainer;
             Instance = this;
@@ -59,7 +59,7 @@ namespace PmdThing.Components.Networking
                 PmdPacketType = PmdPacketType.AddContainer,
                 Id = id,
                 Unique = true,
-                ParentContainer = container.Parent?.Id ?? Base.BaseContainer.Id,
+                Parent = container.Parent?.Id ?? Base.BaseContainer.Id,
                 Source = PmdPacketSource.Server,
             };
 
@@ -79,7 +79,7 @@ namespace PmdThing.Components.Networking
 
         public void RegisterHandler(QueryType type, QueryHandler handler)
         {
-            _queryHandlers.Add(type, handler);
+            _queryHandlers.TryAdd(type, handler);
         }
 
         protected void OnClientConnected(TConn connection, PmdComponentId id)
@@ -93,7 +93,7 @@ namespace PmdThing.Components.Networking
 
                 Framework.Logger.LogInformation("Client connected: [{addr}]", endpoint);
 
-                SubmitTask(() => ClientConnected?.Invoke(connection), ProcessingOrder.Update);
+                Base.SubmitTask(() => ClientConnected?.Invoke(connection));
 
 
                 foreach (var containerId in Base.BaseContainer.GetAllContainers())
@@ -106,24 +106,23 @@ namespace PmdThing.Components.Networking
                 }
 
                 // debug
-                SubmitTask(() =>
+                Base.SubmitTask(() =>
                 {
                     Base.RegisterContainer<TestPokemon>(out var vee, PmdConstants.Pokemon.Eevee, false);
 
                     var tile = vee.GetComponent<TiledTransform>();
                     tile.MoveTo(new PmdTileRef(5, 5));
-
-                }, ProcessingOrder.Update);
+                });
             }
         }
 
         protected void OnClientDisconnect(TConn connection, TAddr endpoint)
         {
             _connections.Remove(endpoint);
-            DeregisterParent<TConn>(_connectionIds[connection], true);
+            Deregister<TConn>(_connectionIds[connection], true);
 
             Framework.Logger.LogInformation("Client disconnected: [{addr}]", endpoint);
-            SubmitTask(() => ClientDisconnected?.Invoke(endpoint), ProcessingOrder.Update);
+            Base.SubmitTask(() => ClientDisconnected?.Invoke(endpoint));
         }
 
         private void UpdateListenableValue(PmdContainerId parentId, string tag, string fieldName, object data)
@@ -156,7 +155,7 @@ namespace PmdThing.Components.Networking
         public override void ListenableValueChanged(dynamic current, dynamic previous, PmdPacket.PacketDto packetDto)
         {
             packetDto.Data = [current];
-            foreach (var connection in _connections.Values.Where(connection => connection.Ready))
+            foreach (var connection in _connections.Values)
             {
                 SendPacket(packetDto, connection);
             }
@@ -218,13 +217,13 @@ namespace PmdThing.Components.Networking
 
                                     if (PmdTypeUtils.IsGenericClass(packet.Type, typeof(PmdListenableComponent<>)))
                                     {
-                                        if (packet.Attribute == null || packet.ParentContainer == null)
+                                        if (packet.Attribute == null || packet.Parent == null)
                                         {
                                             connection.Cleanup();
                                             continue;
                                         }
 
-                                        SubmitTask(() => UpdateListenableComponent(packet.ParentContainer.Value, packet.Attribute!, packet.Data![0]), ProcessingOrder.Update);
+                                        Base.SubmitTask(() => UpdateListenableComponent(packet.Parent.Value, packet.Attribute!, packet.Data![0]));
                                     }
 
                                     break;
@@ -233,14 +232,14 @@ namespace PmdThing.Components.Networking
 
                                     if (packet.Type.IsSubclassOf(typeof(PmdComponent)))
                                     {
-                                        if (packet.ParentContainer.HasValue)
+                                        if (packet.Parent.HasValue)
                                         {
-                                            var parentContainer = Base.GetContainer(packet.ParentContainer.Value);
-                                            SubmitTask(() => parentContainer.RegisterComponent(packet.Id, packet.Type, packet.Unique, packet.Data!), ProcessingOrder.Update);
+                                            var parentContainer = Base.GetContainer(packet.Parent.Value);
+                                            Base.SubmitTask(() => parentContainer.RegisterComponent(packet.Id, packet.Type, packet.Unique, packet.Data!));
                                         }
                                         else
                                         {
-                                            SubmitTask(() => Register(packet.Id, packet.Type, packet.Unique, packet.Data!), ProcessingOrder.Update);
+                                            Base.SubmitTask(() => RegisterComponent(packet.Id, packet.Type, packet.Unique, packet.Data!));
                                         }
                                     }
 
@@ -250,7 +249,7 @@ namespace PmdThing.Components.Networking
 
                                     if (packet.Type.IsSubclassOf(typeof(PmdComponent)))
                                     {
-                                        SubmitTask(() => Base.DeregisterComponent(packet.Type, packet.Id, packet.Unique), ProcessingOrder.Update);
+                                        Base.SubmitTask(() => Base.DeregisterComponent(packet.Type, packet.Id, packet.Unique));
                                     }
 
                                     break;
@@ -261,7 +260,7 @@ namespace PmdThing.Components.Networking
                                     {
                                         if (_queryHandlers.TryGetValue(reqType, out var handler))
                                         {
-                                            var response = handler.Handle(packet.Data?[0], connection);
+                                            var response = handler.Handle(packet.Data?[0], packet.Parent, connection);
                                             SendQueryResponse(connection, packet, response);
                                         }
                                         else
@@ -336,7 +335,7 @@ namespace PmdThing.Components.Networking
             return _containerTracker.Count;
         }
 
-        public override void Cleanup()
+        public virtual void Cleanup()
         {
             Running = false;
             ShutdownTokenSrc.Cancel();

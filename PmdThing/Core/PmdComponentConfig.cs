@@ -1,13 +1,14 @@
 ﻿using PmdThing.Core.Hardware.Framework;
+using PmdThing.Core.Network;
 using PmdComponentId = System.Int32;
 
 namespace PmdThing.Core
 {
     public record PmdComponentConfig
     {
-        public PmdComponentId Priority { get; set; }
-        public required PmdGameBase Base { get; set; }
-        public required PmdFramework Framework { get; set; }
+        public int Priority { get; init; }
+        public required PmdGameBase Base { get; init; }
+        public required PmdFramework Framework { get; init; }
 
         // can be null
         public PmdContainer? Parent = null;

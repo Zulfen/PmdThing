@@ -19,24 +19,26 @@ public class Program
             .GetCapabilities()
             .Headless;
 
-        RokonSocketServer? server = null;
-        RokonClientConnection? client = null;
         if (headless)
         {
-            game.RegisterComponent<RokonSocketServer>(game.BaseContainer, false, out server, 2312);
+            game.RegisterServer<RokonSocketServer>(2312);
+
             var tmxLoader = new TmxTileProvider(@"TileSets\142map.tmx");
             game.RegisterContainer<TiledWorld>(out _,tmxLoader);
 
             game.RegisterComponent<TileQuery>(game.BaseContainer, true, out var tileQueryHandler);
-            game.RegisterComponent<ContainersQuery>(game.BaseContainer, true, out var containersQueryHandler, server);
-            game.RegisterComponent<GetComponentsQuery>(game.BaseContainer, true, out var componentsQuery, server);
-            server.RegisterHandler(QueryType.Tile, tileQueryHandler);
-            server.RegisterHandler(QueryType.ContainerCount, containersQueryHandler);
-            server.RegisterHandler(QueryType.SendComponents, componentsQuery);
+            game.RegisterComponent<ContainersQuery>(game.BaseContainer, true, out var containersQueryHandler);
+            game.RegisterComponent<GetComponentsQuery>(game.BaseContainer, true, out var componentsQuery);
+            game.RegisterComponent<MovementRequest>(game.BaseContainer, true, out var movementRequestHandler);
+
+            game.Server?.RegisterHandler(QueryType.Tile, tileQueryHandler);
+            game.Server?.RegisterHandler(QueryType.ContainerCount, containersQueryHandler);
+            game.Server?.RegisterHandler(QueryType.SendComponents, componentsQuery);
+            game.Server?.RegisterHandler(QueryType.InputTileMove, movementRequestHandler);
         }
         else
         {
-            game.RegisterComponent<RokonClientConnection>(game.BaseContainer, false, out client, "localhost", 2312);
+            game.RegisterClient<RokonGameClient>("localhost", 2312);
             game.RegisterComponent<RokonTileProvider>(game.BaseContainer, true, out var networkLoader);
             game.RegisterContainer<TiledWorld>(out var tiledGame, networkLoader);
         }
@@ -56,8 +58,8 @@ public class Program
         }
 
         game.Start();
-        server?.Cleanup();
-        client?.Cleanup();
+        game.Server?.Cleanup();
+        game.Client?.Cleanup();
 
         Console.Write("saturn was here");
     }

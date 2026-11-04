@@ -1,6 +1,7 @@
-﻿using System.Collections.Concurrent;
-using PmdThing.Core.Hardware.Framework;
+﻿using PmdThing.Core.Hardware.Framework;
 using PmdThing.Core.Util;
+using System.Collections.Concurrent;
+using PmdThing.Core.Network;
 using PmdComponentId = System.Int32;
 using PmdContainerId = System.Int32;
 
@@ -26,8 +27,11 @@ namespace PmdThing.Core
         private readonly ConcurrentQueue<Action> _updateTasks = new();
         private readonly ConcurrentQueue<Action> _renderTasks = new();
 
-        protected readonly PmdGameBase Base = config.Base;
-        protected readonly PmdFramework Framework = config.Framework;
+        protected PmdGameBase Base => config.Base;
+        protected PmdFramework Framework => config.Framework;
+
+        protected IPmdGameServer? Server => Base.Server;
+        protected IPmdGameClient? Client => Base.Client;
 
         public int CompareTo(PmdComponent? other)
         {
@@ -129,6 +133,17 @@ namespace PmdThing.Core
         protected TContainer GetBaseContainer<TContainer>() where TContainer : PmdContainer
         {
             return Base.GetFirstContainer<TContainer>();
+        }
+
+        protected PmdContainer GetContainer(PmdContainerId id)
+        {
+            return Base.GetContainer(id);
+        }
+
+        protected TComponent GetContainerComponent<TComponent>(PmdComponentId id) where TComponent : PmdComponent
+        {
+            var container = GetContainer(id);
+            return container.GetComponent<TComponent>();
         }
 
         protected TComponent GetSharedComponent<TComponent>() where TComponent : PmdComponent

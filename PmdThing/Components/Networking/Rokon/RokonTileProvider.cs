@@ -9,11 +9,9 @@ namespace PmdThing.Components.Networking.Rokon
     public class RokonTileProvider : PmdComponent, IPmdTileProvider
     {
 
-        private readonly RokonClientConnection _client;
-
         public RokonTileProvider(PmdComponentConfig config) : base(config)
         {
-            _client = GetSharedComponent<RokonClientConnection>();
+            if (Client == null) throw new InvalidOperationException("RokonTileProvider can only be used with a client.");
         }
 
         public async Task<string> GetImagePath()
@@ -22,7 +20,7 @@ namespace PmdThing.Components.Networking.Rokon
             {
                 Type = TileQuery.RequestType.Path
             };
-            var path = await _client.SendQuery<string>(QueryType.Tile, request);
+            var path = await Client!.SendQuery<string>(QueryType.Tile, null, request);
 
             return path ?? throw new InvalidOperationException("Received null path from Rokon server.");
         }
@@ -34,7 +32,7 @@ namespace PmdThing.Components.Networking.Rokon
                 Type = TileQuery.RequestType.SheetLocation,
                 Tile = new PmdTileRef(row, column)
             };
-            return await _client.SendQuery<RectangleF>(QueryType.Tile, request);
+            return await Client!.SendQuery<RectangleF>(QueryType.Tile, null, request);
         }
 
         public async Task<bool> CollisionCheck(int row, int column)
@@ -44,7 +42,7 @@ namespace PmdThing.Components.Networking.Rokon
                 Type = TileQuery.RequestType.Collision,
                 Tile = new PmdTileRef(row, column)
             };
-            return await _client.SendQuery<bool>(QueryType.Tile, request);
+            return await Client!.SendQuery<bool>(QueryType.Tile, null, request);
         }
 
         public async Task<int> GetTileWidth()
@@ -53,7 +51,7 @@ namespace PmdThing.Components.Networking.Rokon
             {
                 Type = TileQuery.RequestType.TileWidth,
             };
-            return await _client.SendQuery<int>(QueryType.Tile, request);
+            return await Client!.SendQuery<int>(QueryType.Tile, null, request);
         }
 
         public async Task<int> GetTileHeight()
@@ -62,7 +60,7 @@ namespace PmdThing.Components.Networking.Rokon
             {
                 Type = TileQuery.RequestType.TileHeight,
             };
-            return await _client.SendQuery<int>(QueryType.Tile, request);
+            return await Client!.SendQuery<int>(QueryType.Tile, null, request);
         }
 
         public async Task<int> GetRows()
@@ -71,7 +69,7 @@ namespace PmdThing.Components.Networking.Rokon
             {
                 Type = TileQuery.RequestType.Rows,
             };
-            return await _client.SendQuery<int>(QueryType.Tile, request);
+            return await Client!.SendQuery<int>(QueryType.Tile, null, request);
         }
 
         public async Task<int> GetColumns()
@@ -80,7 +78,7 @@ namespace PmdThing.Components.Networking.Rokon
             {
                 Type = TileQuery.RequestType.Columns,
             };
-            return await _client.SendQuery<int>(QueryType.Tile, request);
+            return await Client!.SendQuery<int>(QueryType.Tile, null, request);
         }
 
         public override void Cleanup()

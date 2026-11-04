@@ -18,7 +18,7 @@ namespace PmdThing.Components.Networking.Rokon
 
         public RokonServerConnection(PmdComponentConfig config, Socket socket) : base(config)
         {
-            _server = GetSharedComponent<RokonSocketServer>();
+            _server = GetBaseContainer<RokonSocketServer>();
             Socket = socket;
 
             _ip = socket.RemoteEndPoint is not IPEndPoint endpoint
@@ -35,7 +35,6 @@ namespace PmdThing.Components.Networking.Rokon
         {
             _server.SendPacket(packet, this);
         }
-
 
         public override void Cleanup()
         {

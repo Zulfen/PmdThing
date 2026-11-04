@@ -1,20 +1,19 @@
 ﻿using PmdThing.Core;
 using PmdThing.Core.Network;
+using PmdContainerId = System.Int32;
 
 namespace PmdThing.Components.Networking.QueryHandlers
 {
-    public class ContainersQuery(PmdComponentConfig config, IPmdGameServer server) : QueryHandler(config)
+    public class ContainersQuery(PmdComponentConfig config) : QueryHandler(config)
     {
-        
-        public override dynamic? Handle(dynamic? requestData, IPmdServerConnection connection)
-        {
-            return server.GetSyncContainerCount();
-        }
-
         public override void Cleanup()
         {
             throw new NotImplementedException();
         }
 
+        public override dynamic? Handle(dynamic? requestData, PmdContainerId? parentContainerId, IPmdServerConnection connection)
+        {
+            return Server?.GetSyncContainerCount();
+        }
     }
 }

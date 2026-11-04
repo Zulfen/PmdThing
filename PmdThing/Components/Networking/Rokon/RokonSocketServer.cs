@@ -11,7 +11,7 @@ namespace PmdThing.Components.Networking.Rokon
         private readonly Socket _serverSocket;
         private readonly int _port;
 
-        public RokonSocketServer(PmdComponentConfig config, int port) : base(config)
+        public RokonSocketServer(PmdContainerConfig config, int port) : base(config)
         {
             AsyncInit = true;
 
@@ -38,7 +38,7 @@ namespace PmdThing.Components.Networking.Rokon
                     var socket = await _serverSocket.AcceptAsync();
                     socket.SendTimeout = 1000;
 
-                    var id = Register<RokonServerConnection>(true, out var connection, socket);
+                    var id = RegisterComponent<RokonServerConnection>(true, out var connection, socket);
                     OnClientConnected(connection, id);
 
                     _ = ProcessLoop(connection);

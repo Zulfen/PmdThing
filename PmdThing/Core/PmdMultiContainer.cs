@@ -144,7 +144,20 @@ namespace PmdThing.Core
 
         public PmdContainer GetContainer(PmdContainerId id)
         {
-            return _runtimeContainers.TryGetValue(id, out var container) ? container : throw new ArgumentException($"Container with ID {id} has not been registered.");
+            if (_runtimeContainers.TryGetValue(id, out var normalContainer))
+            {
+                return normalContainer;
+            }
+
+            foreach (var container in _runtimeContainers.Values)
+            {
+                if (container is PmdMultiContainer multiContainer)
+                {
+                    return multiContainer.GetContainer(id);
+                }
+            }
+
+            throw new ArgumentException($"Container with ID {id} has not been registered.");
         }
 
         public List<PmdContainerId> GetAllContainers()

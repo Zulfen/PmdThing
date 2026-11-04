@@ -18,12 +18,12 @@ namespace PmdThing.Components
         private readonly Transform _transform;
         private readonly TiledWorld _world;
 
-        [PmdServerSync]
         public PmdListenableValue<bool> CanMove;
 
-        [PmdServerSync]
         public PmdListenableValue<bool> Moving;
-        private float _speed;
+
+        [PmdServerSync]
+        public PmdListenableValue<float> Speed;
 
         public TiledTransform(PmdComponentConfig config, PmdTileRef tile) : this(config, tile.Row, tile.Column)
         {
@@ -34,6 +34,7 @@ namespace PmdThing.Components
             Destination = new PmdListenableValue<PmdTileRef>(this, new PmdTileRef(0, 0));
             CanMove = new PmdListenableValue<bool>(this, true);
             Moving = new PmdListenableValue<bool>(this, false);
+            Speed = new PmdListenableValue<float>(this, 2f);
 
             Direction = new PmdListenableValue<PmdConstants.AnimationDirection>(this,
                 PmdConstants.AnimationDirection.South);
@@ -58,7 +59,7 @@ namespace PmdThing.Components
         public void MoveTo(PmdTileRef tile, float speed = 2f)
         {
             FaceTowards(tile);
-            _speed = speed;
+            Speed.Set(speed);
 
             Destination.Set(tile);
         }
@@ -74,7 +75,7 @@ namespace PmdThing.Components
         {
             var destVector = _world.GetWorldSpace(Destination.Get());
             var distanceVector = destVector - _transform.ComponentValue;
-            var step = _speed; //* Framework.Graphics.GetDelta();
+            var step = Speed.Get(); //* Framework.Graphics.GetDelta();
 
             if (distanceVector.Length <= step && distanceVector.Length > 0 && Moving.Get())
             {

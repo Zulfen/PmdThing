@@ -6,6 +6,6 @@ namespace PmdThing.Components.Networking
 {
     public abstract class QueryHandler(PmdComponentConfig config) : PmdComponent(config)
     {
-        public abstract dynamic? Handle(dynamic? requestData, IPmdServerConnection connection);
+        public abstract dynamic? Handle(dynamic? requestData, int? parentContainerId, IPmdServerConnection connection);
     }
 }

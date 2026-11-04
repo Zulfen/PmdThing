@@ -1,4 +1,5 @@
-﻿using PmdThing.Core;
+﻿using PmdThing.Components.Networking;
+using PmdThing.Core;
 using PmdThing.Core.Hardware.Input;
 using static PmdThing.Core.Util.PmdConstants;
 
@@ -21,19 +22,32 @@ namespace PmdThing.Components
             switch (key)
             {
                 case PmdKey.LeftArrow:
-                    _tiledTransform.MoveInDirection(AnimationDirection.West);
+                    MoveInDirection(AnimationDirection.West);
                     break;
                 case PmdKey.RightArrow:
-                    _tiledTransform.MoveInDirection(AnimationDirection.East);
+                    MoveInDirection(AnimationDirection.East);
                     break;
                 case PmdKey.DownArrow:
-                    _tiledTransform.MoveInDirection(AnimationDirection.South);
+                    MoveInDirection(AnimationDirection.South);
                     break;
                 case PmdKey.UpArrow:
-                    _tiledTransform.MoveInDirection(AnimationDirection.North);
+                    MoveInDirection(AnimationDirection.North);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(key), key, null);
+            }
+        }
+
+        private void MoveInDirection(AnimationDirection direction)
+        {
+            // checks for if it's in a client / server environment, as it is optional!
+            if (Client == null)
+            {
+                _tiledTransform.MoveInDirection(direction);
+            }
+            else
+            {
+                Client.SendRequest(QueryType.InputTileMove, GetParent(), direction);
             }
         }
 
