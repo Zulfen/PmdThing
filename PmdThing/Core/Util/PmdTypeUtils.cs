@@ -10,7 +10,7 @@ namespace PmdThing.Core.Util
             var result = false;
             if (type.BaseType?.IsGenericType == true)
             {
-                result =  type.BaseType?.GetGenericTypeDefinition() == genericType;
+                result = type.BaseType?.GetGenericTypeDefinition() == genericType;
             }
             if (type.IsGenericType)
             {
@@ -21,6 +21,9 @@ namespace PmdThing.Core.Util
         }
 
         // TODO: kinda slow... type cache?
+        // Source - https://stackoverflow.com/a/20862223
+        // Posted by mheyman
+        // Retrieved 2026-11-10, License - CC BY-SA 3.0
         public static Type? FindType(string fullName)
         {
             return AppDomain.CurrentDomain.GetAssemblies()
@@ -63,6 +66,7 @@ namespace PmdThing.Core.Util
             return false;
         }
 
+        // generated with tab auto-complete
         public static object[]? ParseJsonElements(JsonElement[]? elements)
         {
             if (elements == null) return null;

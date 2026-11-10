@@ -21,19 +21,9 @@ namespace PmdThing.Containers
 
         public TestPokemon(PmdContainerConfig config, Pokemon type, bool player) : base(config)
         {
-            var capabilities = Framework.Graphics.GetCapabilities();
 
             _player = player;
             Type = type;
-            
-
-            if (capabilities.Api == PmdGraphics.HardwareApi.OpenGl)
-            {
-                RegisterComponent<GlShader>(true,
-                    @"Core\Hardware\Graphics\Shaders\Vertex\shader.vert",
-                    @"Core\Hardware\Graphics\Shaders\Fragment\shader.frag",
-                    "vertex");
-            }
 
             RegisterSyncedComponent
             (
@@ -45,7 +35,7 @@ namespace PmdThing.Containers
             );
 
             
-            if (!capabilities.Headless)
+            if (!IsOnServer())
             {
                 RegisterComponent<SpriteRenderer>(true, out var pokemonRenderer, Type);
                 _renderer = pokemonRenderer;
@@ -56,7 +46,7 @@ namespace PmdThing.Containers
                 GetIfExists<Camera>(false)?
                     .SetTarget(this);
 
-                if (!capabilities.Headless)
+                if (!IsOnServer())
                 {
                     RegisterComponent<TiledInput>(true);
                 }

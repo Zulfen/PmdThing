@@ -27,11 +27,6 @@ namespace PmdThing.Components.Graphics
             var window = Framework.Graphics.GetMainWindow();
 
             ScreenCenter = new vec2(window.GetWidth() / 2f, window.GetHeight() / 2f);
-
-            Register<GlShader>(true, out _,
-                @"Core\Hardware\Graphics\Shaders\Vertex\shader.vert",
-                @"Core\Hardware\Graphics\Shaders\Fragment\shader.frag",
-                "vertex");
         }
 
         public void SetData(int rows, int columns, int tileWidth, int tileHeight, string imagePath)

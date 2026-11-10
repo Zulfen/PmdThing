@@ -16,9 +16,6 @@ namespace PmdThing.Components
             public bool ShouldMove { get; set; } = true;
         }
 
-        private readonly Timer _timer;
-
-        private vec2? _destination = null;
         private readonly PmdServerValue<PmdTileRef> _destinationTile;
         public delegate Task AsyncDestinationChanged(PmdContainer? sender, DestinationEventArgs e);
         public event AsyncDestinationChanged? DestinationChanged;

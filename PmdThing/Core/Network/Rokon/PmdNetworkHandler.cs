@@ -92,6 +92,11 @@ namespace PmdThing.Core.Network.Rokon
             }
         }
 
+        private void RegisterValue(Type valueType, object instance)
+        {
+
+        }
+
         public PmdComponentId? GetIdForTag(string tag, PmdContainerId parentId)
         {
             if (_tagIds.TryGetValue(new TagEntry(tag, parentId), out var id))

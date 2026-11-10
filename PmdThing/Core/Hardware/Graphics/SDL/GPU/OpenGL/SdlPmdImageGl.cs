@@ -3,9 +3,7 @@ using OpenTK.Graphics.OpenGL;
 using PmdThing.Components.Graphics.OpenGL;
 using SDL;
 using System.Drawing;
-using DrawOrder = PmdThing.Components.Graphics.DrawOrder;
 using static SDL.SDL3;
-using static SDL.SDL3_image;
 
 
 namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
@@ -16,11 +14,11 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
         private readonly GlShader _shader;
         private readonly SdlPmdTextureAtlasGl _atlas;
         private readonly PointF _atlasTopLeft;
-        private readonly DrawOrder _drawOrder;
 
-        //TODO: indices
-        private readonly float[] _squareVertices = [ 
-            // pos      // tex 
+        // TODO: indices
+        // https://www.opengl-tutorial.org/beginners-tutorials/tutorial-5-a-textured-cube/
+        // uv's have the origin in the bottom left
+        private readonly float[] _packedSquare = [ 
             0.0f, 1.0f, 0.0f, 0.0f,
             1.0f, 0.0f, 1.0f, 1.0f,
             0.0f, 0.0f, 0.0f, 1.0f,
@@ -33,12 +31,11 @@ namespace PmdThing.Core.Hardware.Graphics.SDL.GPU.OpenGL
         public SdlPmdImageGl(PmdComponentConfig config, string path) : base(config, path)
         {
             _atlas = GetSharedComponent<SdlPmdTextureAtlasGl>();
-            _shader = GetParentComponent<GlShader>();
-            RegisterIfNotExist(true, out _drawOrder, 0f);
+            _shader = GetSharedComponent<GlShader>();
 
             if (_shader.IsBufferEmpty())
             {
-                _shader.AddToBuffer(_squareVertices);
+                _shader.AddToBuffer(_packedSquare);
             }
 
             var converted = SDL_ConvertSurface(LoadBuffer, SDL_PixelFormat.SDL_PIXELFORMAT_ABGR8888);

@@ -182,6 +182,13 @@ namespace PmdThing.Core
             return _parent!.RegisterComponent(unique, out instance, arguments);
         }
 
+        public PmdComponentId Register<TComponent>(
+            bool unique,
+            params object[] arguments) where TComponent : PmdComponent
+        {
+            return _parent!.RegisterComponent<TComponent>(unique, arguments);
+        }
+
         public PmdComponentId Register(
             PmdComponentId id,
             Type componentType,

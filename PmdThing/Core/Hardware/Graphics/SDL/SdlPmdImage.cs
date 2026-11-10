@@ -19,13 +19,13 @@ namespace PmdThing.Core.Hardware.Graphics.SDL
             Framework.Logger.LogDebug("Loading image at path: ({path})..", path);
             LoadBuffer = IMG_Load((Utf8String)path);
 
-            _width = LoadBuffer->w;
-            _height = LoadBuffer->h;
-
             if (LoadBuffer == null)
             {
                 throw new ArgumentException($"Unable to IMG_Load the image at: {path}\n{SDL_GetError()}");
             }
+
+            _width = LoadBuffer->w;
+            _height = LoadBuffer->h;
         }
 
         /// <summary>

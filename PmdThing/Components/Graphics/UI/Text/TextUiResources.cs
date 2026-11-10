@@ -1,18 +1,12 @@
-﻿using PmdThing.Components.Graphics;
-using PmdThing.Components.Graphics.OpenGL;
-using PmdThing.Core;
-using PmdThing.Core.Network.Rokon;
+﻿using PmdThing.Core;
 
-namespace PmdThing.Containers
+namespace PmdThing.Components.Graphics.UI.Text
 {
-
-    [PmdServerSync]
-    public class DrawableTextHandler : PmdMultiContainer
+    public class TextUiResources : PmdComponent
     {
-
         private record CharData(int Row, int Column);
 
-        private readonly SpriteSheet? _fontSheet;
+        private readonly SpriteSheet _fontSheet;
 
         // TODO: xml
         private readonly Dictionary<char, CharData> _charMap = new()
@@ -45,39 +39,28 @@ namespace PmdThing.Containers
             ['z'] = new CharData(1, 12)
         };
 
-        public DrawableTextHandler(PmdContainerConfig config) : base(config)
+        public TextUiResources(PmdComponentConfig config) : base(config)
         {
-            if (!Framework.Graphics
-                .GetCapabilities()
-                .Headless)
-            {
-                // TODO: basic shared shader?
-                RegisterComponent<GlShader>(true,
-                    @"Core\Hardware\Graphics\Shaders\Vertex\shader.vert",
-                    @"Core\Hardware\Graphics\Shaders\Fragment\shader.frag",
-                    "vertex");
-
-                RegisterComponent<SpriteSheet>(true, out var sheet, "Fonts/Default.png", 15, 13);
-                _fontSheet = sheet;
-            }
+            Register<SpriteSheet>(true, out var fontSheet, "UI/Default.png", 15, 13);
+            _fontSheet = fontSheet;
         }
 
-        public int AddLabel(string text, int x, int y)
-        {
-            return RegisterContainer<TextContainer>(text, x, y);
-        }
-
-        public void DrawString(string text, int x, int y, int spacing = 1)
+        public void DrawString(string text, int x, int y, int spacing = 0)
         {
             var currentX = x;
             foreach (var c in text)
             {
                 if (_charMap.TryGetValue(c, out var charData))
                 {
-                    _fontSheet?.DrawSprite(currentX, y, charData.Row, charData.Column, false);
+                    _fontSheet.DrawSprite(currentX, y, charData.Row, charData.Column, false);
                 }
-                currentX += _fontSheet?.GetSpriteWidth() ?? 0 + spacing;
+                currentX += _fontSheet.GetSpriteWidth() + spacing;
             }
+        }
+
+        public override void Cleanup()
+        {
+            _fontSheet.Cleanup();
         }
     }
 }

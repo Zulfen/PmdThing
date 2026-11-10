@@ -74,7 +74,7 @@ namespace PmdThing.Components.Graphics.OpenGL
             // Binding again in here to be explicit so we definitely change the right thing
             GL.BindVertexArray(VertexArrayObject);
             GL.BindBuffer(BufferTarget.ArrayBuffer, VertexBufferObject);
-            GL.BufferData(BufferTarget.ArrayBuffer, _gpuUploadVertex.Count * sizeof(float), _gpuUploadVertex.ToArray(), BufferUsageHint.StaticDraw);
+            GL.BufferData(BufferTarget.ArrayBuffer, _gpuUploadVertex.Count * sizeof(float), [.. _gpuUploadVertex], BufferUsageHint.StaticDraw);
 
             GL.BindVertexArray(0);
         }
@@ -114,12 +114,6 @@ namespace PmdThing.Components.Graphics.OpenGL
             {
                 throw new ArgumentException($"GLSL program failed to link: {infoLog}");
             }
-
-            //GL.DetachShader(ProgramId, vertexId);
-            //GL.DeleteShader(vertexId);
-
-            //GL.DetachShader(ProgramId, fragId);
-            //GL.DeleteShader(fragId);
 
             // Get uniforms / vars from shader
             GL.GetProgram(ProgramId, GetProgramParameterName.ActiveUniforms, out var numberOfUniforms);

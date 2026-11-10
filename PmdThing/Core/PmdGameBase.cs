@@ -3,6 +3,9 @@ using PmdThing.Core.Util;
 using PmdThing.Core.Util.Structures;
 using System.Collections.Concurrent;
 using Microsoft.CodeAnalysis.Operations;
+using PmdThing.Components.Graphics;
+using PmdThing.Components.Graphics.OpenGL;
+using PmdThing.Core.Hardware.Graphics;
 using PmdThing.Core.Network;
 using PmdComponentId = System.Int32;
 using PmdContainerId = System.Int32;
@@ -30,7 +33,7 @@ namespace PmdThing.Core
         private static PmdGameBase? _instance;
         public readonly PmdFramework Framework;
 
-        private readonly bool _headless;
+        public bool Headless { get; init; }
         private PmdComponentId _componentCounter;
 
         private readonly PmdComponentRegistry _allComponents = new();
@@ -54,7 +57,7 @@ namespace PmdThing.Core
         {
             _instance = this;
             Framework = framework;
-            _headless = Framework.Graphics
+            Headless = Framework.Graphics
                 .GetCapabilities()
                 .Headless;
 
@@ -65,6 +68,16 @@ namespace PmdThing.Core
         private void Init()
         {
             RegisterComponent<Components.Timer>(null, false, out _, 16.67f, ProcessingOrder.Update);
+
+            if (Framework.Graphics
+                    .GetCapabilities()
+                    .Api == PmdGraphics.HardwareApi.OpenGl)
+            {
+                RegisterComponent<GlShader>(null, false, out _, 
+                    @"Core\Hardware\Graphics\Shaders\Vertex\basic.vert",
+                    @"Core\Hardware\Graphics\Shaders\Fragment\basic.frag",
+                    "vertex");
+            }
         }
 
         public static PmdGameBase Create(int width, int height, string title, string[] commandLineArgs)
@@ -78,7 +91,7 @@ namespace PmdThing.Core
             return _instance ?? throw new ApplicationException("Could not get GameBase. Is it initialised?");
         }
 
-        public void RegisterServer<TServer>(params object[] arguments) where TServer : IPmdGameServer
+        public TServer RegisterServer<TServer>(params object[] arguments) where TServer : IPmdGameServer
         {
             var serverType = typeof(TServer);
             if (serverType.IsSubclassOf(typeof(PmdContainer)))
@@ -87,7 +100,7 @@ namespace PmdThing.Core
                 if (possibleServer is TServer server)
                 {
                     Server = server;
-                    return;
+                    return server;
                 }
             }
             throw new InvalidCastException($"Could not create valid instance of class {typeof(TServer).Name}");
@@ -291,10 +304,9 @@ namespace PmdThing.Core
         public List<TComponent> GetAllComponents<TComponent>() where TComponent : PmdComponent
         {
             var componentIds = _allComponents.GetAll(typeof(TComponent));
-            return componentIds
+            return [.. componentIds
                 .Select(id => _runtimeComponents[id])
-                .OfType<TComponent>()
-                .ToList();
+                .OfType<TComponent>()];
         }
 
         public Dictionary<PmdComponent, PmdComponentId> GetAllComponents()
@@ -338,7 +350,6 @@ namespace PmdThing.Core
                 Framework.Graphics.PreUpdate();
                 Framework.Update();
 
-                // Done to modify the collection of components whilst not iterating over them
                 if (_componentActions.TryDequeue(out var queuedComponent))
                 {
 
@@ -377,7 +388,7 @@ namespace PmdThing.Core
                     mainThreadTask.WaitHandle?.Set();
                 }
 
-                if (_headless) continue;
+                if (Headless) continue;
 
                 Framework.Graphics.PreRender();
 

@@ -178,6 +178,25 @@ namespace PmdThing.Core
             return id;
         }
 
+        public PmdComponentId RegisterSyncedProperty<T>(T value, string tag, bool unique = true)
+        {
+            // Probably a nicer way to do this.
+            var config = new PmdComponentConfig
+            {
+                Framework = Framework,
+                Base = Base,
+                Parent = this,
+            };
+
+            var listenableComponent = new PmdListenableComponent<T>(config, value);
+            var id = Base.RegisterComponent(null, listenableComponent, unique);
+            PmdNetworkHandler.Instance?.RegisterSyncedComponent(id, listenableComponent, unique, this, tag);
+
+            _properties.Add(typeof(T), id);
+            _localTypes.Add(listenableComponent.GetType(), id);
+            return id;
+        }
+
         public T GetProperty<T>(bool unique = true)
         {
             if (_properties.TryGetValue(typeof(T), out var id))
@@ -204,6 +223,11 @@ namespace PmdThing.Core
         {
             _localTypes.GetAll()
                 .ForEach(entry => Base.DeregisterComponent(entry.Type, entry.Id, false));
+        }
+
+        public bool IsOnServer()
+        {
+            return Base.Server != null;
         }
 
         ~PmdContainer()

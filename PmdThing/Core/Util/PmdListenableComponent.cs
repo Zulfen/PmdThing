@@ -12,9 +12,9 @@
 
         public event Action<T, T>? Changed;
 
-        public PmdListenableComponent(PmdComponentConfig config, T value) : base(config)
+        public PmdListenableComponent(PmdComponentConfig config, T screenTopLeft) : base(config)
         {
-            _value = new PmdListenableValue<T>(this, value);
+            _value = new PmdListenableValue<T>(this, screenTopLeft);
             _value.Changed += OnChanged;
         }
 

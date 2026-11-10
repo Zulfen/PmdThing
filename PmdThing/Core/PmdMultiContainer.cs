@@ -19,7 +19,7 @@ namespace PmdThing.Core
             return RegisterContainer(null, typeof(TContainer), out _, arguments);
         }
 
-        public PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, out PmdContainer instance, params object[]? arguments)
+        public virtual PmdContainerId RegisterContainer(PmdContainerId? id, Type containerType, out PmdContainer instance, params object[]? arguments)
         {
             // ReSharper disable once UseSymbolAlias
             var newId = id ?? Random.Shared.Next(2, int.MaxValue);

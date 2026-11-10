@@ -1,18 +1,22 @@
-﻿using PmdThing.Components;
-using PmdThing.Components.Graphics;
+﻿using System.Drawing;
+using PmdThing.Components.Graphics.UI;
+using PmdThing.Components.Graphics.UI.Text;
 using PmdThing.Core;
 using PmdThing.Core.Network.Rokon;
-using PmdThing.Core.Util;
 
 namespace PmdThing.Containers
 {
     [PmdServerSync]
-    public class TextContainer : PmdNestedContainer<DrawableTextHandler>
+    public class TextContainer : PmdContainer
     {
-        public TextContainer(PmdContainerConfig config, string text, int x, int y) : base(config)
+        public TextContainer(PmdContainerConfig config, string text, int x, int y, int spacing) : base(config)
         {
-            RegisterSyncedComponent<Transform>(true, out _, "transform", x, y);
-            RegisterComponent<DrawableString>(true, out _, text);
+            RegisterComponent<UiBounds>(true, new Point(x, y), new Size(), 16);
+            if (!IsOnServer())
+            {
+                RegisterIfNotExist<TextUiResources>(false);
+                RegisterComponent<TextRenderer>(true, out _, text, spacing);
+            }
         }
     }
 }

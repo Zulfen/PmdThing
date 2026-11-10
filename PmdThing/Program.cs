@@ -21,7 +21,7 @@ public class Program
 
         if (headless)
         {
-            game.RegisterServer<RokonSocketServer>("localhost", 2312);
+            var server = game.RegisterServer<RokonSocketServer>("localhost", 2312);
 
             var tmxLoader = new TmxTileProvider(@"TileSets\142map.tmx");
             game.RegisterContainer<TiledWorld>(out _,tmxLoader);
@@ -31,10 +31,10 @@ public class Program
             game.RegisterComponent<GetComponentsQuery>(game.BaseContainer, true, out var componentsQuery);
             game.RegisterComponent<MovementRequest>(game.BaseContainer, true, out var movementRequestHandler);
 
-            game.Server?.RegisterHandler(QueryType.Tile, tileQueryHandler);
-            game.Server?.RegisterHandler(QueryType.ContainerCount, containersQueryHandler);
-            game.Server?.RegisterHandler(QueryType.SendComponents, componentsQuery);
-            game.Server?.RegisterHandler(QueryType.InputTileMove, movementRequestHandler);
+            server.RegisterHandler(QueryType.Tile, tileQueryHandler);
+            server.RegisterHandler(QueryType.ContainerCount, containersQueryHandler);
+            server.RegisterHandler(QueryType.SendComponents, componentsQuery);
+            server.RegisterHandler(QueryType.InputTileMove, movementRequestHandler);
         }
         else
         {
@@ -51,8 +51,8 @@ public class Program
         {
             game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Vulpix, true);
             //game.RegisterContainer<TestPokemon>(out _, PmdConstants.Pokemon.Eevee, false);
-            game.RegisterContainer<DrawableTextHandler>(out var textRenderer);
-            textRenderer.AddLabel("hello this is text", 20, 20);
+            game.RegisterContainer<Window>(out var window, 50, 50, 10);
+            window.RegisterContainer<TextContainer>("hello this is text", 20, 20, -5);
         }
 
         game.Start();
